@@ -95,6 +95,10 @@ const e2e = {
   setup: () => {
     if (IS_E2E) openSetup()
   },
+  /** Interactive or passive, as the shortcut would: a test can't count on getting the real one. */
+  interactive: (isOn: boolean) => {
+    if (IS_E2E) setInteractive(isOn)
+  },
   /** Checks for an update now (the test points the updater at a local feed). */
   checkUpdates: () => {
     if (IS_E2E) checkNow(true)
