@@ -119,6 +119,8 @@ test('the spending panel adds up the transcripts of every session', async () => 
     const panel = office.locator('#spend')
 
     await expect(panel).toBeVisible()
+    // The whole history, so the test does not depend on the time of day.
+    await office.locator('#spend-periods button').last().click()
     await expect(office.locator('#spend-total')).toContainText('2 sesiones')
     // 1000 + 500 + 2000 + 1500 new tokens, 2000 of them output, 10 000 read from cache.
     await expect(office.locator('#spend-total')).toContainText('5,0 k tokens nuevos (2,0 k de salida) y 10,0 k leídos de caché')

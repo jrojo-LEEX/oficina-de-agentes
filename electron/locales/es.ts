@@ -82,6 +82,8 @@ const es = {
     diagnosticsSaved: 'Diagnóstico guardado',
     diagnosticsBody: 'Está en la carpeta de la app, junto a la configuración.',
     recordingSaved: 'Grabación guardada',
+    configBroken: 'La configuración tenía un error',
+    configBrokenBody: 'Se guardó una copia ({{file}}) y la app arrancó con los valores de fábrica.',
     replayTitle: 'Abrir un replay',
     replayFilter: 'Replay de la oficina',
     replayError: 'No se pudo abrir el replay',

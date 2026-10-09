@@ -6,7 +6,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-import { isOldMod, parseSnapshot } from './snapshot'
+import { LIVE_FRESH_MS } from './live'
+import { compareVersions, isOldMod, MIN_MOD_VERSION, parseSnapshot } from './snapshot'
 
 /** The plugin's name in the marketplace: `oficina@<marketplace>`. */
 export const PLUGIN_NAME = 'oficina'
@@ -36,7 +37,7 @@ export type SetupStatus = {
 
 const readJson = (file: string): unknown => {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''))
+    return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''))
   } catch {
     return null
   }
@@ -76,6 +77,9 @@ const loadedFromFolder = (settings: Record<string, unknown>, env: Record<string,
   return null
 }
 
+/** A version below the one this app needs (`unknown` and empty are not judged). */
+const isOldVersion = (version: string) => /^\d/.test(version) && compareVersions(version, MIN_MOD_VERSION) < 0
+
 export const setupStatus = (claudeDir: string, liveDir: string, now: number, env: Record<string, string | undefined> = process.env): SetupStatus => {
   const settings = readJson(path.join(claudeDir, 'settings.json'))
   const settingsRecord = isRecord(settings) ? settings : {}
@@ -87,8 +91,16 @@ export const setupStatus = (claudeDir: string, liveDir: string, now: number, env
   let seenVersion = ''
   let isSeenOld = false
 
+  let names: string[] = []
+
   try {
-    for (const name of fs.readdirSync(liveDir).filter(one => one.endsWith('.json')).slice(0, MAX_FILES)) {
+    names = fs.readdirSync(liveDir).filter(one => one.endsWith('.json')).slice(0, MAX_FILES)
+  } catch {
+    // No folder yet: no session has written one.
+  }
+
+  for (const name of names) {
+    try {
       const file = path.join(liveDir, name)
       const stat = fs.statSync(file)
 
@@ -96,14 +108,16 @@ export const setupStatus = (claudeDir: string, liveDir: string, now: number, env
 
       const snapshot = parseSnapshot(fs.readFileSync(file, 'utf8'))
 
-      if (!snapshot || now - snapshot.updatedAt > RECENT_MS) continue
+      // Ended sessions say nothing about the mod running now (it may have been updated since).
+      if (!snapshot || snapshot.isEnded || now - snapshot.updatedAt > RECENT_MS) continue
 
-      if (!snapshot.isEnded) liveSessions += 1
+      // Live as the office counts it.
+      if (now - snapshot.updatedAt <= LIVE_FRESH_MS) liveSessions += 1
       seenVersion ||= snapshot.modVersion
       isSeenOld ||= isOldMod(snapshot)
+    } catch {
+      // One file caught mid-write: the others still count.
     }
-  } catch {
-    // No folder yet: no session has written one.
   }
 
   const modSource: ModSource = fromMarketplace ? 'marketplace' : fromFolder ? 'folder' : seenVersion || liveSessions > 0 ? 'seen' : null
@@ -114,7 +128,8 @@ export const setupStatus = (claudeDir: string, liveDir: string, now: number, env
     modSource,
     isModDisabled: fromMarketplace !== null && enabled[fromMarketplace.key] === false,
     modVersion: fromMarketplace?.version || fromFolder?.version || seenVersion,
-    isModOld: isSeenOld,
+    // Out of date: a session running an old one, or an installed version below what the app needs.
+    isModOld: isSeenOld || isOldVersion(fromMarketplace?.version || fromFolder?.version || ''),
     liveSessions,
   }
 }

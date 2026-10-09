@@ -21,35 +21,31 @@ export const USER_DATA_NAME = 'oficina-de-agentes'
 /** Where versions before the rename kept them, read once to carry them over. */
 export const LEGACY_USER_DATA_NAME = 'latigo-overlay'
 
-const given = (value: string | undefined) => value?.trim() ?? ''
+/**
+ * An absolute local path: `C:\...`, `C:/...` or `/...`; never relative, never
+ * `~`, never a network share. The mod reads the same variables by the same
+ * rule (plugin/oficina/hooks/register.tsx), so both always agree on the folder.
+ */
+export const isAbsoluteLocal = (value: string) => /^([A-Za-z]:[\\/]|\/(?![\\/]))/.test(value)
 
-/** `~` and `~/x` as the home folder, the rest made absolute. */
-export const expandHome = (value: string, home: string) =>
-  path.resolve(value === '~' ? home : value.startsWith('~/') || value.startsWith('~\\') ? path.join(home, value.slice(2)) : value)
+/** A variable's value when it names an absolute local path; anything else counts as unset. */
+const given = (value: string | undefined) => {
+  const trimmed = value?.trim() ?? ''
+
+  return isAbsoluteLocal(trimmed) ? path.resolve(trimmed) : ''
+}
 
 /** Claude Code's own folder: CLAUDE_CONFIG_DIR when set, else ~/.claude. */
-export const claudeDirOf = (env: Env = process.env, home = os.homedir()) => {
-  const named = given(env.CLAUDE_CONFIG_DIR)
-
-  return named ? expandHome(named, home) : path.join(home, '.claude')
-}
+export const claudeDirOf = (env: Env = process.env, home = os.homedir()) => given(env.CLAUDE_CONFIG_DIR) || path.join(home, '.claude')
 
 /** Where the mod writes one snapshot per live session. */
-export const liveDirOf = (env: Env = process.env, home = os.homedir()) => {
-  const named = given(env[ENV.liveDir])
-
-  return named ? expandHome(named, home) : path.join(claudeDirOf(env, home), 'oficina-live')
-}
+export const liveDirOf = (env: Env = process.env, home = os.homedir()) => given(env[ENV.liveDir]) || path.join(claudeDirOf(env, home), 'oficina-live')
 
 /** Where Claude Code keeps every session's transcript: what spending is read from. */
 export const transcriptsDirOf = (env: Env = process.env, home = os.homedir()) => path.join(claudeDirOf(env, home), 'projects')
 
 /** The app's own folder: OFICINA_USER_DATA_DIR when set, else %APPDATA%\oficina-de-agentes. */
-export const userDataDirOf = (appData: string, env: Env = process.env, home = os.homedir()) => {
-  const named = given(env[ENV.userDataDir])
-
-  return named ? expandHome(named, home) : path.join(appData, USER_DATA_NAME)
-}
+export const userDataDirOf = (appData: string, env: Env = process.env) => given(env[ENV.userDataDir]) || path.join(appData, USER_DATA_NAME)
 
 /**
  * Whether `file` is inside `dir` (or is it): what keeps a path that came

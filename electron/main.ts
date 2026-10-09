@@ -24,7 +24,7 @@ import * as path from 'node:path'
 
 import { changesOf } from './changes'
 import type { Seen } from './changes'
-import { carryOver, DEFAULTS, FIELDS, loadConfig, saveConfig } from './config'
+import { carryOver, DEFAULTS, FIELDS, loadConfigFile, saveConfig } from './config'
 import type { Config } from './config'
 import { currentLanguage, languageOf, localeOf, setLanguage, t } from './i18n'
 import { readLive } from './live'
@@ -877,7 +877,9 @@ const wireRenderer = () => {
 
     for (const limit of limits.slice(0, 8) as { kind?: unknown; percentUsed?: unknown; resetsAt?: unknown }[]) {
       const used = Number(limit?.percentUsed)
-      const key = `${String(limit?.kind)}:${String(limit?.resetsAt)}`
+      // One warning per window: its reset time, to five minutes (sessions report it a little apart).
+      const resetsAt = typeof limit?.resetsAt === 'string' ? Date.parse(limit.resetsAt) : Number.NaN
+      const key = `${String(limit?.kind)}:${Number.isFinite(resetsAt) ? Math.round(resetsAt / 300_000) : String(limit?.resetsAt)}`
 
       if (!(used >= 80) || warnedLimits.has(key)) continue
 
@@ -1257,8 +1259,16 @@ if (!IS_SELFTEST && !app.requestSingleInstanceLock()) {
     // The first run after the rename takes the old folder's config and ledger along.
     if (!IS_SELFTEST && !IS_E2E && !process.env[ENV.userDataDir]) carryOver(legacyDir, app.getPath('userData'))
 
-    config = IS_SELFTEST ? structuredClone(DEFAULTS) : loadConfig(configPath())
+    const loaded = IS_SELFTEST ? { config: structuredClone(DEFAULTS), brokenCopy: null } : loadConfigFile(configPath())
+    config = loaded.config
     applyLanguage()
+
+    // A config that is not JSON (a hand edit) was kept aside before the defaults take its place.
+    if (loaded.brokenCopy) {
+      const copy = loaded.brokenCopy
+      config.isOnboarded = true
+      showNote(t('notify.configBroken'), t('notify.configBrokenBody', { file: path.basename(copy) }), () => shell.showItemInFolder(copy))
+    }
     applyLoginItem()
     wireRenderer()
     refreshSetup()

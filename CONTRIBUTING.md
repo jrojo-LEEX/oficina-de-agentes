@@ -38,12 +38,12 @@ npm start
 | `npm run icon` | Draws `build/icon.png` |
 | `npm run pack` | Unpacked build in `release\win-unpacked\` |
 | `npm run dist` | Installer and portable `.exe` in `release\`, not published |
-| `npm run release` | Builds and publishes to GitHub Releases. CI runs this; you should not |
+| `npm run release` | Builds and uploads to a draft GitHub release. CI runs this; you should not |
 
 ## Tests
 
 - **Unit**: new modules get Vitest tests in `test/unit/`. Modules that do not import Electron can be tested directly; keep it that way.
-- **End-to-end**: `npm run build`, then `npm run test:e2e`. Each test starts the app against a throwaway Claude Code folder and app folder. To test the packaged app instead, set `OFICINA_E2E_EXE` to its `.exe` (for example after `npm run pack`). `OFICINA_UPDATE_URL` points the updater at a local feed.
+- **End-to-end**: `npm run build`, then `npm run test:e2e`. Each test starts the app against a throwaway Claude Code folder and app folder. To test the packaged app instead, set `OFICINA_E2E_EXE` to its `.exe`. Release builds ship with the Node inspector fuse **off**, so Playwright cannot drive them: build a test copy with `npm run pack -- -c.electronFuses.enableNodeCliInspectArguments=true`, as CI does. `OFICINA_UPDATE_URL` points the updater at a local feed, but the app honours it only in a build marked with `-c.extraMetadata.oficinaTestBuild=true`, under `OFICINA_E2E=1`, and only on loopback (`127.0.0.1` or `localhost`).
 - **Mod**: `npm run test:plugin` and `npm run validate:plugin` need the `claude` CLI on `PATH`, or `CLAUDE_BIN` set to its executable. `npx tsc -p plugin/oficina` needs the engine's types, which `claude --plugin-dir plugin/oficina` lays down.
 - Never use real transcripts, real session data or real paths in tests or fixtures. Use made-up names like `C:\work\tienda` or `acme`.
 
@@ -74,8 +74,9 @@ npm start
 3. Update `CHANGELOG.md`: move *Unreleased* to the new version with today's date, and update the links at the bottom.
 4. Run everything: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run test:e2e`, `npm run validate:plugin`, `npm run test:plugin`.
 5. Run `/security-review` in Claude Code on the changes since the last release, and fix what it finds.
-6. Commit, tag `vX.Y.Z` and push the tag. CI builds the installer, the portable `.exe` and `latest.yml` from the tagged commit and publishes the release.
-7. Check the published release: the files are there, the installer runs on a clean machine, and an installed older version picks up the update.
+6. Commit, tag `vX.Y.Z` and push the tag. CI builds the installer, the portable `.exe`, `latest.yml` and `SHA256SUMS.txt` from the tagged commit and uploads them to a **draft** release.
+7. Review the draft: the files are there, the notes match the changelog, and the installer runs on a clean machine.
+8. **Publish the draft.** Only a published release reaches installed copies; then check that an installed older version picks up the update.
 
 People get the new mod with `/plugin marketplace update oficina-de-agentes` and `/plugin update oficina@oficina-de-agentes`; the app's guide tells them when theirs is too old.
 
@@ -85,4 +86,4 @@ People get the new mod with `/plugin marketplace update oficina-de-agentes` and 
 - **Pruebas**: `npm test` (node:test y Vitest), `npm run test:e2e` (Playwright; compila antes con `npm run build`), `npm run test:plugin` y `npm run validate:plugin` (necesitan el CLI `claude` o `CLAUDE_BIN`). Nunca uses transcripciones, datos ni rutas reales.
 - **Estilo**: comentarios en inglés; ningún texto de interfaz en el código: va en `electron/locales/es.ts` **y** `en.ts`, con las mismas claves; español con *tú*. `npm run lint` (Biome) antes de subir.
 - **Commits y PRs**: un tema por commit, asunto en imperativo. En issues y PRs **nunca pegues transcripciones ni rutas personales**. Los problemas de seguridad van por [SECURITY.md](SECURITY.md).
-- **Publicar una versión**: sube la versión en `package.json`, en `plugin/oficina/.claude-plugin/plugin.json` y en la entrada de `.claude-plugin/marketplace.json`; actualiza `CHANGELOG.md`; corre todas las pruebas y `/security-review`; crea la etiqueta `vX.Y.Z` y súbela. CI compila y publica.
+- **Publicar una versión**: sube la versión en `package.json`, en `plugin/oficina/.claude-plugin/plugin.json` y en la entrada de `.claude-plugin/marketplace.json`; actualiza `CHANGELOG.md`; corre todas las pruebas y `/security-review`; crea la etiqueta `vX.Y.Z` y súbela. CI compila y sube todo a un release en **borrador**: revísalo y publícalo. Solo un release publicado llega a las copias instaladas.

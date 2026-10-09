@@ -3,7 +3,7 @@ import * as path from 'node:path'
 
 import { describe, expect, test } from 'vitest'
 
-import { CONFIG_VERSION, carryOver, DEFAULTS, loadConfig, parseConfig, saveConfig, serializeConfig } from '../../electron/config'
+import { CONFIG_VERSION, carryOver, DEFAULTS, loadConfig, loadConfigFile, parseConfig, saveConfig, serializeConfig } from '../../electron/config'
 import { tempDir } from './helpers'
 
 describe('the config', () => {
@@ -16,7 +16,7 @@ describe('the config', () => {
   })
 
   test('a byte-order mark at the start does not throw the values away', () => {
-    const text = `﻿${JSON.stringify({ configVersion: CONFIG_VERSION, officeCorner: 'tl', volume: 0.3, isWhipOn: true })}`
+    const text = `\uFEFF${JSON.stringify({ configVersion: CONFIG_VERSION, officeCorner: 'tl', volume: 0.3, isWhipOn: true })}`
     const config = parseConfig(text)
 
     expect(config.officeCorner).toBe('tl')
@@ -84,6 +84,27 @@ describe('the config', () => {
 
     expect(config.isWhipOn).toBe(false)
     expect(config.clientFolders).toEqual([])
+  })
+
+  test('a hand-written file without configVersion is read as this version, not the old app', () => {
+    const config = parseConfig(JSON.stringify({ language: 'en', officeCorner: 'tl' }))
+
+    expect(config.isWhipOn).toBe(false)
+    expect(config.clientFolders).toEqual([])
+    expect(config.language).toBe('en')
+  })
+
+  test('a file that is not JSON is kept aside, and the defaults take its place without touching it', () => {
+    const dir = tempDir()
+    const file = path.join(dir, 'config.json')
+    const edited = '{ "shortcuts": { "interactive": "Alt+Shift+O" }, }'
+    fs.writeFileSync(file, edited)
+    const { config, brokenCopy } = loadConfigFile(file, Date.UTC(2026, 9, 9, 12))
+
+    expect(config).toEqual({ ...DEFAULTS })
+    expect(brokenCopy).toBe(`${file}.broken-2026-10-09T12-00-00-000Z`)
+    expect(fs.readFileSync(brokenCopy!, 'utf8')).toBe(edited)
+    expect(loadConfigFile(path.join(dir, 'missing.json')).brokenCopy).toBeNull()
   })
 
   test('the first run after the rename copies the old config and ledger, and never overwrites', () => {

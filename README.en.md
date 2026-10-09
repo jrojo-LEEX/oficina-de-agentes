@@ -14,7 +14,7 @@ A local, open-source monitor for your Claude Code agents: an office in a corner 
 ## Requirements
 
 - Windows 10 or 11 (x64).
-- Claude Code, installed and opened at least once.
+- Claude Code, installed and opened at least once, in a recent version with plugin marketplaces and plugin hook modules (the mod was tested with Claude Code 2.1.289). If Claude Code does not know `/plugin`, update it.
 - Languages: Spanish and English. It follows Windows; change it in tray → *Language*.
 
 ## Install
@@ -23,9 +23,11 @@ There are two pieces: the **desktop app** (it draws the office) and the **Oficin
 
 **1. Install the app.** Download `Oficina-de-agentes-Setup-<version>.exe` from the [latest GitHub release](https://github.com/jrojo-LEEX/oficina-de-agentes/releases/latest) and run it. It installs for your user only, with no administrator rights, and opens when done.
 
+The app has no main window: it lives in the **system tray**, next to the clock (a desk with an orange screen). On Windows 11 it is usually hidden behind the **^** overflow arrow in the taskbar; drag it out of there to keep it in sight.
+
 Rather not install anything? Use `Oficina-de-agentes-<version>-portable.exe`: a single file, but it does not update itself.
 
-Windows may warn you that the app is not signed: see [The executable is not signed](#the-executable-is-not-signed).
+Your browser and Windows may warn you that the app is not signed: see [The executable is not signed](#the-executable-is-not-signed).
 
 **2. Install the mod in Claude Code.** In any Claude Code session, type these two commands:
 
@@ -37,9 +39,11 @@ Windows may warn you that the app is not signed: see [The executable is not sign
 /plugin install oficina@oficina-de-agentes
 ```
 
-Then **open a new Claude Code session**: sessions that were already open do not load the mod.
+If `/plugin install` asks where to install it, pick the **user** scope, so it works in all your projects.
 
-**3. Check the guide.** On first run the app opens the *Status and help* guide. It checks Claude Code's folder and the mod, and each step turns green when it is ready; if something is missing, it shows the exact command with a *Copy* button. Launch an agent in Claude Code and it shows up in the corner of your screen.
+Then **open a new Claude Code session**: sessions that were already open do not load the mod. In the terminal, type `/exit` and run `claude` again; in the Claude desktop app, start a new session.
+
+**3. Check the guide.** On first run the app opens the *Status and help* guide. It checks Claude Code's folder and the mod, and each step turns green when it is ready; if something is missing, it shows the exact command with a *Copy* button. As soon as the new session starts, its Claude (the boss) shows up in the corner of your screen; you do not need to launch a subagent to see something. The subagents it launches sit next to it.
 
 <img src="docs/guide.en.png" width="420" alt="The first-run guide: Claude Code found, the mod missing with the two commands to copy, and the options">
 
@@ -79,11 +83,11 @@ Clues to follow the work:
 | `Ctrl+Alt+L` | Interactive mode: hover an agent to see its details (what it is doing, which file, for how long, who launched it). Also: click the tray icon |
 | `Ctrl+Alt+H` | Hide or show the office |
 
-Hiding it always leaves it passive. Change the shortcuts in the [configuration](#configuration).
+Hiding it makes it passive; showing it again brings interactive mode back if it was on. Change the shortcuts in the [configuration](#configuration).
 
 ## The tray menu
 
-Right-click the tray icon (a desk with an orange screen):
+Right-click the tray icon (a desk with an orange screen). On Windows 11 it is usually behind the **^** overflow arrow in the taskbar; drag it out to pin it.
 
 | Item | What it does |
 | --- | --- |
@@ -125,7 +129,7 @@ Tray → *Spending by project and session*. It shows how much you worked with Cl
 | Input | Fresh input tokens, including those written to the prompt cache |
 | Output | Tokens the model wrote |
 | Cache read | Context read back on every answer. Shown apart because it is far cheaper |
-| Cost | What Claude Code reported, only for sessions the mod watched live; the rest show "—" |
+| Cost | What Claude Code reported, only for sessions the mod watched live; the rest show "—". It is the session's whole cost: a session active in the period counts with all of it |
 | Limits | How much of the 5-hour and weekly windows you have used, and when each resets (Claude Code reports them to sessions running the mod) |
 
 Each answer is counted once, subagents included. The **project** is the root of the git repository of the session's folder: a worktree counts as its repository. The **model** view has no time, only answers and tokens. There is also a 30-day chart (time and tokens) and a map of which days and hours you work.
@@ -149,9 +153,13 @@ It **never** stores message content: not what you wrote, not what Claude answere
 
 Version 1 has no code-signing certificate. Here is what happens and what you can do.
 
-**SmartScreen.** Windows may show *"Windows protected your PC"*. Click **More info** → **Run anyway**.
+**Your browser.** The browser may warn you before Windows does. In Edge, the download says the file *isn't commonly downloaded*: hover the download → **⋯** → **Keep** → **Show more** → **Keep anyway**. Chrome shows a similar warning in its downloads list: choose **Keep**.
 
-**Smart App Control (Windows 11).** When it is on, which is common on fresh installs, it **blocks unsigned apps and offers no way around it**. You cannot allow just one app. Turning Smart App Control off is a security decision for the whole system, and **we do not recommend making it for this app**. Instead, run it from source, which uses Electron's own signed runtime. You need [Node.js 22.18 or newer](https://nodejs.org/) and [Git](https://git-scm.com/):
+**SmartScreen.** When you open it, Windows may show *"Windows protected your PC"*. Click **More info** → **Run anyway**.
+
+**Smart App Control (Windows 11).** When it is on, which is common on fresh installs, it **blocks unsigned apps and offers no way around it**. You will recognise it by the message *"Smart App Control blocked…"* (in Spanish Windows, *«Una directiva de Control de aplicaciones bloqueó este archivo»*). You cannot allow just one app. Turning Smart App Control off is a security decision for the whole system, and **we do not recommend making it for this app**.
+
+Instead, run it from source. In our tests with Smart App Control on, the installer was blocked and running from source worked: it uses the Electron runtime downloaded from npm, which is widely used, and Smart App Control let it through on reputation. Because Smart App Control decides by reputation, we cannot guarantee it always will. You need [Node.js 22.18 or newer](https://nodejs.org/) and [Git](https://git-scm.com/):
 
 ```powershell
 git clone https://github.com/jrojo-LEEX/oficina-de-agentes.git
@@ -172,20 +180,24 @@ $file = "$env:USERPROFILE\Downloads\Oficina-de-agentes-Setup-1.0.0.exe"
 [Convert]::ToBase64String([Security.Cryptography.SHA512]::Create().ComputeHash([IO.File]::ReadAllBytes($file)))
 ```
 
-- GitHub also shows each release file's SHA-256; to compare it: `Get-FileHash <file> -Algorithm SHA256`.
+- Each release also has `SHA256SUMS.txt`, with the SHA-256 of every `.exe` (generated by the same release workflow). It covers the portable version too. Compare it with:
+
+```powershell
+Get-FileHash "$env:USERPROFILE\Downloads\Oficina-de-agentes-1.0.0-portable.exe" -Algorithm SHA256
+```
 
 **Updates.** The installed version downloads new versions by itself and installs them when it closes (or right away, from the tray). The updater (electron-updater) checks each download against the release's SHA-512 checksum, **not against a signature**: that catches a damaged download, but does not protect you if someone took over the release itself. If that worries you, turn the automatic check off and update by hand or from source.
 
 ## Configuration
 
-Tray → *Open the config file (shortcuts)…* opens `%APPDATA%\oficina-de-agentes\config.json`. Almost everything is set from the tray; these fields only from the file:
+Tray → *Open the config file (shortcuts)…* opens `%APPDATA%\oficina-de-agentes\config.json`. Almost everything is set from the tray; the shortcuts and `clientFolders` only from the file:
 
 | Field | What it is | Default |
 | --- | --- | --- |
 | `shortcuts.interactive` | Interactive-mode shortcut, in Electron's accelerator format | `"Control+Alt+L"` |
 | `shortcuts.visible` | Hide/show shortcut | `"Control+Alt+H"` |
 | `clientFolders` | Folders that hold one folder per client (letters, digits, `.`, `-`, `_`) | `[]` |
-| `language` | `"auto"` (Windows'), `"es"` or `"en"` | `"auto"` |
+| `language` | `"auto"` (Windows'), `"es"` or `"en"`. Also from tray → *Language* and from the guide | `"auto"` |
 
 For example:
 
@@ -206,7 +218,7 @@ For example:
 
 | Variable | What for | Default |
 | --- | --- | --- |
-| `CLAUDE_CONFIG_DIR` | Claude Code's folder. The app honours it just like Claude Code does | `%USERPROFILE%\.claude` |
+| `CLAUDE_CONFIG_DIR` | Claude Code's folder, as an **absolute path** (the mod ignores relative ones and ones starting with `~`). The app honours it just like Claude Code does | `%USERPROFILE%\.claude` |
 | `OFICINA_LIVE_DIR` | Where the mod writes, and the app reads, each session's state (an absolute path; the mod and the app must see the same one) | `<Claude Code folder>\oficina-live` |
 | `OFICINA_USER_DATA_DIR` | The app's own folder (config, spending ledger, logs) | `%APPDATA%\oficina-de-agentes` |
 
@@ -220,7 +232,9 @@ If you use `CLAUDE_CONFIG_DIR`, set it as a **Windows user environment variable*
 - *Your mod is out of date*: `/plugin marketplace update oficina-de-agentes`, then `/plugin update oficina@oficina-de-agentes`.
 - *It is installed but turned off*: `/plugin enable oficina@oficina-de-agentes`.
 
-After installing, updating or enabling the mod, **open a new Claude Code session**.
+After installing, updating or enabling the mod, **open a new Claude Code session** (`/exit`, then `claude` again). The session's Claude shows up as soon as it starts.
+
+**I can't find the tray icon.** On Windows 11 it is usually behind the **^** overflow arrow in the taskbar. Drag it out to pin it.
 
 **The guide does not find Claude Code's folder**, or finds another one. Claude Code and the app see a different `CLAUDE_CONFIG_DIR`. The guide shows the folder the app uses. Set the variable for your Windows user (see [Environment variables](#environment-variables)) and restart both the app and Claude Code.
 
@@ -235,7 +249,7 @@ After installing, updating or enabling the mod, **open a new Claude Code session
 ## Uninstall
 
 1. Optionally, untick tray → *Open when Windows starts* (especially with the portable version).
-2. **The app**: Windows Settings → *Apps* → *Installed apps* → *Oficina de agentes* → *Uninstall*. The portable one: quit it and delete the `.exe`.
+2. **The app**: Windows Settings → *Apps* → *Installed apps* (on Windows 10, *Apps & features*) → *Oficina de agentes* → *Uninstall*. The portable one: quit it and delete the `.exe`.
 3. **The mod**, in Claude Code:
 
    ```text

@@ -12,9 +12,12 @@ const FEED = process.env.OFICINA_UPDATE_URL
 const NEXT = process.env.OFICINA_E2E_NEXT_VERSION
 const EXE = process.env.OFICINA_E2E_EXE
 
-/** The product version Windows reads from an .exe. */
+/** The version electron-builder writes into the .exe (FileVersion keeps x.y.z; ProductVersion is x.y.z.0). */
 const versionOf = (exe: string) =>
-  execFileSync('powershell', ['-NoProfile', '-Command', `(Get-Item -LiteralPath '${exe.replace(/'/g, "''")}').VersionInfo.ProductVersion`], { encoding: 'utf8' }).trim()
+  execFileSync('powershell', ['-NoProfile', '-Command', `(Get-Item -LiteralPath '${exe.replace(/'/g, "''")}').VersionInfo.FileVersion`], { encoding: 'utf8' }).trim()
+
+// A retry would start from the version already installed: one honest run.
+test.describe.configure({ retries: 0 })
 
 test('an installed version updates itself to the newer one on the feed', async () => {
   test.skip(!FEED || !NEXT || !EXE, 'needs OFICINA_UPDATE_URL, OFICINA_E2E_NEXT_VERSION and an installed OFICINA_E2E_EXE')
@@ -40,6 +43,10 @@ test('an installed version updates itself to the newer one on the feed', async (
 
   await expect.poll(() => versionOf(EXE!), { timeout: 120_000, intervals: [2000] }).toBe(NEXT)
 
-  // The new version left running by the installer is closed by the workflow.
-  cleanUp(at)
+  // The new version the installer started may still hold its files: the workflow closes it.
+  try {
+    cleanUp(at)
+  } catch {
+    // Left for the runner to throw away.
+  }
 })

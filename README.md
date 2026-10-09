@@ -7,14 +7,14 @@ Un monitor local y de código abierto de tus agentes de Claude Code: una oficina
 ![Oficina de agentes: una oficina en la esquina de la pantalla con el Claude de cada sesión y sus subagentes trabajando en sus escritorios](docs/demo.gif)
 
 > [!NOTE]
-> **Privacidad.** Todo queda en tu PC. La app no tiene telemetría y no envía nada a ningún lado: lee archivos que Claude Code ya guarda en tu equipo. Su única conexión de red es buscar actualizaciones en GitHub Releases, y la puedes apagar (bandeja → *Buscar actualizaciones solo*, o en la guía de inicio).
+> **Privacidad.** Todo queda en tu PC. La app no tiene telemetría y no envía nada a ningún lado: lee archivos que Claude Code ya guarda en tu equipo. Su única conexión de red es buscar actualizaciones en GitHub Releases, y la puedes apagar (bandeja → *Buscar actualizaciones automáticamente*, o en la guía de inicio).
 
 **Contenido:** [Instalación](#instalación) · [Qué vas a ver](#qué-vas-a-ver) · [Bandeja](#el-menú-de-la-bandeja) · [Avisos](#avisos-de-windows) · [Gasto](#el-panel-de-gasto) · [Ejecutable sin firmar](#el-ejecutable-no-está-firmado) · [Configuración](#configuración) · [Problemas](#problemas-frecuentes) · [Desinstalar](#desinstalar) · [Limitaciones](#limitaciones) · [Desarrollo](#desarrollo)
 
 ## Requisitos
 
 - Windows 10 u 11 (x64).
-- Claude Code instalado y abierto al menos una vez.
+- Claude Code instalado y abierto al menos una vez, en una versión reciente con marketplaces de plugins y módulos de hooks de plugins (el mod se probó con Claude Code 2.1.289). Si Claude Code no reconoce `/plugin`, actualízalo.
 - Idiomas: español e inglés. Sigue al de Windows; se cambia en bandeja → *Idioma*.
 
 ## Instalación
@@ -23,9 +23,11 @@ Son dos piezas: la **app de escritorio** (dibuja la oficina) y el **mod Oficina*
 
 **1. Instala la app.** Descarga `Oficina-de-agentes-Setup-<versión>.exe` de la [última versión en GitHub Releases](https://github.com/jrojo-LEEX/oficina-de-agentes/releases/latest) y ábrelo. Se instala solo para tu usuario, sin pedir permisos de administrador, y se abre al terminar.
 
+La app no tiene ventana principal: vive en la **bandeja del sistema**, junto al reloj (un escritorio con una pantalla naranja). En Windows 11 suele quedar escondida tras la flecha **^** de la barra de tareas; arrástrala fuera de ahí para dejarla siempre a la vista.
+
 ¿Prefieres no instalar nada? Usa `Oficina-de-agentes-<versión>-portable.exe`: es un solo archivo, pero no se actualiza solo.
 
-Windows puede advertirte que la app no está firmada: lee [El ejecutable no está firmado](#el-ejecutable-no-está-firmado).
+El navegador y Windows pueden advertirte que la app no está firmada: lee [El ejecutable no está firmado](#el-ejecutable-no-está-firmado).
 
 **2. Instala el mod en Claude Code.** En cualquier sesión de Claude Code, escribe estos dos comandos:
 
@@ -37,9 +39,11 @@ Windows puede advertirte que la app no está firmada: lee [El ejecutable no est�
 /plugin install oficina@oficina-de-agentes
 ```
 
-Después **abre una sesión nueva** de Claude Code: las que ya estaban abiertas no cargan el mod.
+Si `/plugin install` te pregunta dónde instalarlo, elige el ámbito de usuario (*user*), así queda para todos tus proyectos.
 
-**3. Mira la guía.** La primera vez, la app abre la guía *Estado y ayuda*. Revisa la carpeta de Claude Code y el mod, y cada paso se pone en verde cuando está listo; si falta algo, te muestra el comando exacto con un botón *Copiar*. Lanza un agente en Claude Code y aparece en la esquina de la pantalla.
+Después **abre una sesión nueva** de Claude Code: las que ya estaban abiertas no cargan el mod. En la terminal, escribe `/exit` y vuelve a ejecutar `claude`; en la app de escritorio de Claude, abre una sesión nueva.
+
+**3. Mira la guía.** La primera vez, la app abre la guía *Estado y ayuda*. Revisa la carpeta de Claude Code y el mod, y cada paso se pone en verde cuando está listo; si falta algo, te muestra el comando exacto con un botón *Copiar*. En cuanto empieza la sesión nueva, su Claude (el jefe) aparece en la esquina de la pantalla; no hace falta lanzar un subagente para ver algo. Los subagentes que lance se sientan a su lado.
 
 <img src="docs/guide.png" width="420" alt="La guía del primer arranque: Claude Code encontrado, el mod faltante con los dos comandos para copiar y las opciones">
 
@@ -79,11 +83,11 @@ Pistas para entender el trabajo:
 | `Ctrl+Alt+L` | Modo interactivo: pasa el mouse por un agente para ver su detalle (qué hace, qué archivo, hace cuánto, quién lo lanzó). También: clic en el ícono de la bandeja |
 | `Ctrl+Alt+H` | Ocultar o mostrar la oficina |
 
-Ocultarla siempre la deja en modo pasivo. Los atajos se cambian en la [configuración](#configuración).
+Ocultarla la pasa a modo pasivo; al mostrarla de nuevo, vuelve al modo interactivo si lo tenías activado. Los atajos se cambian en la [configuración](#configuración).
 
 ## El menú de la bandeja
 
-Clic derecho en el ícono de la bandeja (un escritorio con una pantalla naranja):
+Clic derecho en el ícono de la bandeja (un escritorio con una pantalla naranja). En Windows 11 suele estar tras la flecha **^** de la barra de tareas; arrástralo fuera para fijarlo.
 
 | Opción | Qué hace |
 | --- | --- |
@@ -97,7 +101,7 @@ Clic derecho en el ícono de la bandeja (un escritorio con una pantalla naranja)
 | Grabar | Clip de los últimos 12 segundos o timelapse (WebM), y replays. Graba la oficina como datos, nunca tu pantalla. Van a `Videos\Oficina de agentes` |
 | Idioma | Automático (el de Windows), español o inglés |
 | Estado y ayuda… | La guía de inicio |
-| Buscar actualizaciones / Buscar actualizaciones solo | Buscar ahora, o apagar la búsqueda automática |
+| Buscar actualizaciones / Buscar actualizaciones automáticamente | Buscar ahora, o apagar la búsqueda automática |
 | Abrir al iniciar Windows | Viene activado |
 | Abrir configuración (atajos)… | Abre `config.json` |
 | Reportar que se trabó… | Guarda un diagnóstico en la carpeta de la app |
@@ -125,7 +129,7 @@ Bandeja → *Gasto por proyecto y sesión*. Muestra cuánto trabajaste con Claud
 | Entrada | Tokens nuevos de entrada, incluidos los que se escriben en la caché |
 | Salida | Tokens que escribió el modelo |
 | Caché leída | El contexto que se vuelve a leer en cada respuesta. Va aparte porque es mucho más barato |
-| Costo | El que informó Claude Code, solo de las sesiones que el mod vio en vivo; las demás muestran "—" |
+| Costo | El que informó Claude Code, solo de las sesiones que el mod vio en vivo; las demás muestran "—". Es el costo de toda la sesión: una sesión activa en el período cuenta con todo su costo |
 | Límites | Cuánto usaste de la ventana de 5 horas y de la semanal, y cuándo se renueva cada una (las informa Claude Code a las sesiones con el mod) |
 
 Cada respuesta se cuenta una sola vez, subagentes incluidos. El **proyecto** es la raíz del repositorio git de la carpeta de la sesión: un worktree cuenta como su repositorio. El **modelo** no reparte tiempo, solo respuestas y tokens. Además hay un gráfico de 30 días (tiempo y tokens) y un mapa de en qué días y horas trabajas.
@@ -149,9 +153,13 @@ Cada respuesta se cuenta una sola vez, subagentes incluidos. El **proyecto** es 
 
 La versión 1 no tiene certificado de firma de código. Esto es lo que pasa y qué puedes hacer.
 
-**SmartScreen.** Windows puede mostrar *"Windows protegió tu PC"*. Haz clic en **Más información** → **Ejecutar de todas formas**.
+**El navegador.** Antes que Windows, puede avisarte el navegador. En Edge, la descarga dice que el archivo *no se descarga habitualmente*: pasa el mouse por la descarga → **⋯** → **Conservar** → **Mostrar más** → **Conservar de todos modos**. Chrome muestra un aviso parecido en su lista de descargas: elige **Conservar**.
 
-**Smart App Control (Windows 11).** Si está activado, algo común en equipos recién instalados, **bloquea las apps sin firmar y no ofrece forma de saltarlo**. No se puede permitir una sola app. Apagar Smart App Control es una decisión de seguridad para todo el sistema, y **no te recomendamos tomarla por esta app**. En su lugar, córrela desde el código fuente, que usa el runtime de Electron, que sí está firmado. Necesitas [Node.js 22.18 o más nuevo](https://nodejs.org/) y [Git](https://git-scm.com/):
+**SmartScreen.** Al abrirlo, Windows puede mostrar *«Windows protegió su PC»*. Haz clic en **Más información** → **Ejecutar de todas formas**.
+
+**Smart App Control (Windows 11).** Si está activado, algo común en equipos recién instalados, **bloquea las apps sin firmar y no ofrece forma de saltarlo**. Lo vas a reconocer por el mensaje *«Una directiva de Control de aplicaciones bloqueó este archivo»* (en inglés, *"Smart App Control blocked…"*). No se puede permitir una sola app. Apagar Smart App Control es una decisión de seguridad para todo el sistema, y **no te recomendamos tomarla por esta app**.
+
+En su lugar, córrela desde el código fuente. En nuestras pruebas, con Smart App Control activado, el instalador quedó bloqueado y correrla desde el código funcionó: usa el runtime de Electron que se descarga de npm, muy usado, y Smart App Control lo deja pasar por su reputación. Como Smart App Control decide por reputación, no podemos garantizar que siempre lo permita. Necesitas [Node.js 22.18 o más nuevo](https://nodejs.org/) y [Git](https://git-scm.com/):
 
 ```powershell
 git clone https://github.com/jrojo-LEEX/oficina-de-agentes.git
@@ -172,20 +180,24 @@ $file = "$env:USERPROFILE\Downloads\Oficina-de-agentes-Setup-1.0.0.exe"
 [Convert]::ToBase64String([Security.Cryptography.SHA512]::Create().ComputeHash([IO.File]::ReadAllBytes($file)))
 ```
 
-- GitHub también muestra el SHA-256 de cada archivo del release; para compararlo: `Get-FileHash <archivo> -Algorithm SHA256`.
+- Cada release trae además `SHA256SUMS.txt`, con el SHA-256 de cada `.exe` (lo genera el mismo flujo de publicación). Sirve también para la versión portable. Compáralo con:
+
+```powershell
+Get-FileHash "$env:USERPROFILE\Downloads\Oficina-de-agentes-1.0.0-portable.exe" -Algorithm SHA256
+```
 
 **Actualizaciones.** La versión instalada descarga las nuevas sola y las instala al cerrarse (o al momento, desde la bandeja). El actualizador (electron-updater) comprueba cada descarga contra el checksum SHA-512 del release, **no contra una firma**: eso detecta una descarga dañada, pero no protege si alguien tomara el control del release. Si eso te preocupa, apaga la búsqueda automática y actualiza a mano o desde el código.
 
 ## Configuración
 
-Bandeja → *Abrir configuración (atajos)…* abre `%APPDATA%\oficina-de-agentes\config.json`. Casi todo se cambia desde la bandeja; estos campos solo desde el archivo:
+Bandeja → *Abrir configuración (atajos)…* abre `%APPDATA%\oficina-de-agentes\config.json`. Casi todo se cambia desde la bandeja; los atajos y `clientFolders`, solo desde el archivo:
 
 | Campo | Qué es | Por defecto |
 | --- | --- | --- |
 | `shortcuts.interactive` | Atajo del modo interactivo, con el formato de Electron | `"Control+Alt+L"` |
 | `shortcuts.visible` | Atajo para ocultar o mostrar | `"Control+Alt+H"` |
 | `clientFolders` | Carpetas que guardan una carpeta por cliente (letras, números, `.`, `-`, `_`) | `[]` |
-| `language` | `"auto"` (el de Windows), `"es"` o `"en"` | `"auto"` |
+| `language` | `"auto"` (el de Windows), `"es"` o `"en"`. También desde bandeja → *Idioma* y desde la guía | `"auto"` |
 
 Por ejemplo:
 
@@ -206,7 +218,7 @@ Por ejemplo:
 
 | Variable | Para qué | Por defecto |
 | --- | --- | --- |
-| `CLAUDE_CONFIG_DIR` | La carpeta de Claude Code. La app la respeta igual que Claude Code | `%USERPROFILE%\.claude` |
+| `CLAUDE_CONFIG_DIR` | La carpeta de Claude Code, como **ruta absoluta** (el mod ignora las relativas y las que empiezan con `~`). La app la respeta igual que Claude Code | `%USERPROFILE%\.claude` |
 | `OFICINA_LIVE_DIR` | Dónde el mod escribe y la app lee el estado de cada sesión (ruta absoluta; el mod y la app deben ver la misma) | `<carpeta de Claude Code>\oficina-live` |
 | `OFICINA_USER_DATA_DIR` | La carpeta propia de la app (configuración, registro de gasto, logs) | `%APPDATA%\oficina-de-agentes` |
 
@@ -220,7 +232,9 @@ Si usas `CLAUDE_CONFIG_DIR`, defínela como variable de entorno **de tu usuario 
 - *Tienes una versión vieja del mod*: `/plugin marketplace update oficina-de-agentes` y luego `/plugin update oficina@oficina-de-agentes`.
 - *Está instalado pero apagado*: `/plugin enable oficina@oficina-de-agentes`.
 
-Después de instalar, actualizar o encender el mod, **abre una sesión nueva** de Claude Code.
+Después de instalar, actualizar o encender el mod, **abre una sesión nueva** de Claude Code (`/exit` y otra vez `claude`). El Claude de la sesión aparece en cuanto empieza.
+
+**No encuentro el ícono de la bandeja.** En Windows 11 suele estar tras la flecha **^** de la barra de tareas. Arrástralo fuera para fijarlo.
 
 **La guía no encuentra la carpeta de Claude Code**, o encuentra otra. Claude Code y la app están viendo un `CLAUDE_CONFIG_DIR` distinto. La guía muestra la carpeta que usa la app. Define la variable para tu usuario de Windows (ver [Variables de entorno](#variables-de-entorno)) y reinicia la app y Claude Code.
 
@@ -235,7 +249,7 @@ Después de instalar, actualizar o encender el mod, **abre una sesión nueva** d
 ## Desinstalar
 
 1. Si quieres, desmarca bandeja → *Abrir al iniciar Windows* (sobre todo con la versión portable).
-2. **La app**: Configuración de Windows → *Aplicaciones* → *Aplicaciones instaladas* → *Oficina de agentes* → *Desinstalar*. La portable: ciérrala y borra el `.exe`.
+2. **La app**: Configuración de Windows → *Aplicaciones* → *Aplicaciones instaladas* (en Windows 10, *Aplicaciones y características*) → *Oficina de agentes* → *Desinstalar*. La portable: ciérrala y borra el `.exe`.
 3. **El mod**, en Claude Code:
 
    ```text

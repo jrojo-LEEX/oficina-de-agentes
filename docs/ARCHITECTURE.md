@@ -102,8 +102,10 @@ The app reads local files that other processes write, and shows them. It has no 
 | `enableEmbeddedAsarIntegrityValidation` | on | A modified `app.asar` is refused |
 | `enableCookieEncryption` | on | Cookies on disk are encrypted |
 | `grantFileProtocolExtraPrivileges` | off | `file://` pages get no extra privileges |
-| `enableNodeCliInspectArguments` | **on** | Left on on purpose, so Playwright can drive the packaged app in CI. It means a local user can attach a debugger to the app with `--inspect`; that user can already run code as themselves |
+| `enableNodeCliInspectArguments` | off | `--inspect` and similar flags cannot attach a debugger to a release build |
 
-**Updates and signing.** The executables are not code-signed in v1 (`verifyUpdateCodeSignature: false`). electron-updater verifies each download against the SHA-512 in the release's `latest.yml`. That detects corruption, not a compromised release. Releases are built by CI from a tagged commit.
+**Test builds.** CI's end-to-end and update-test builds turn the inspector fuse on (`-c.electronFuses.enableNodeCliInspectArguments=true`) so Playwright can drive the packaged app. The update-test build is also marked with `-c.extraMetadata.oficinaTestBuild=true`: only such a build, run under `OFICINA_E2E=1`, honours a local update feed (`OFICINA_UPDATE_URL`), and only on loopback. Release builds ignore that variable.
+
+**Updates and signing.** The executables are not code-signed in v1 (`verifyUpdateCodeSignature: false`). electron-updater verifies each download against the SHA-512 in the release's `latest.yml`. That detects corruption, not a compromised release. Releases are built by CI from a tagged commit, uploaded as a draft and published by hand; only published releases reach installed copies. Each release also carries `SHA256SUMS.txt`.
 
 **The mod** uses no network, calls no model and runs no programs. It writes only inside the live folder.

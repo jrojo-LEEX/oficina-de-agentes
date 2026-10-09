@@ -60,6 +60,10 @@ let firstCheck: ReturnType<typeof setTimeout> | null = null
 let isAsked = false
 /** The test feed in use, if any. */
 let feed: string | null = null
+/** The periodic check is on: with it off, only a check the person asks for runs. */
+let isEnabled = false
+/** Versions already announced, so a later check does not say the same news again. */
+const announced = new Set<string>()
 
 const set = (next: UpdateState) => {
   state = next
@@ -83,22 +87,38 @@ export const setupUpdates = (given: Hooks) => {
     autoUpdater.forceDevUpdateConfig = !app.isPackaged
   }
 
-  autoUpdater.on('checking-for-update', () => set({ kind: 'checking', version: '' }))
+  // A downloaded version stays ready until it is installed: no later check takes the tray's "restart" away.
+  const isReady = () => state.kind === 'ready'
+
+  autoUpdater.on('checking-for-update', () => {
+    if (!isReady()) set({ kind: 'checking', version: '' })
+  })
   autoUpdater.on('update-available', info => {
+    isAsked = false
+    if (isReady()) return
+
     set({ kind: 'available', version: info.version })
-    hooks?.notify(isPortable() ? 'portable' : 'available', info.version)
+
+    if (!announced.has(`available:${info.version}`)) {
+      announced.add(`available:${info.version}`)
+      hooks?.notify(isPortable() ? 'portable' : 'available', info.version)
+    }
   })
   autoUpdater.on('update-not-available', info => {
-    set({ kind: 'none', version: info.version })
+    if (!isReady()) set({ kind: 'none', version: info.version })
     if (isAsked) hooks?.notify('none', app.getVersion())
     isAsked = false
   })
   autoUpdater.on('update-downloaded', info => {
     set({ kind: 'ready', version: info.version })
-    hooks?.notify('ready', info.version)
+
+    if (!announced.has(`ready:${info.version}`)) {
+      announced.add(`ready:${info.version}`)
+      hooks?.notify('ready', info.version)
+    }
   })
   autoUpdater.on('error', () => {
-    set({ kind: 'error', version: '' })
+    if (!isReady()) set({ kind: 'error', version: '' })
     if (isAsked) hooks?.notify('error', '')
     isAsked = false
   })
@@ -108,6 +128,8 @@ export const setupUpdates = (given: Hooks) => {
 export const checkNow = (isAskedFor = false) => {
   // Run from the source code there is nothing to replace, unless a test feed says otherwise.
   if (!app.isPackaged && !feed) return
+  // Turned off: nothing reaches GitHub unless the person asks.
+  if (!isEnabled && !isAskedFor) return
 
   isAsked = isAskedFor
   autoUpdater.checkForUpdates().catch(() => set({ kind: 'error', version: '' }))
@@ -119,6 +141,7 @@ export const scheduleUpdates = (isOn: boolean) => {
   if (firstCheck) clearTimeout(firstCheck)
   timer = null
   firstCheck = null
+  isEnabled = isOn
 
   if (!isOn) return
 

@@ -83,6 +83,8 @@ const en: typeof es = {
     diagnosticsSaved: 'Diagnostics saved',
     diagnosticsBody: 'It is in the app’s folder, next to the config.',
     recordingSaved: 'Recording saved',
+    configBroken: 'The config had an error',
+    configBrokenBody: 'A copy was kept ({{file}}) and the app started with the defaults.',
     replayTitle: 'Open a replay',
     replayFilter: 'Office replay',
     replayError: 'Could not open the replay',

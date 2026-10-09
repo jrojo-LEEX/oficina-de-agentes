@@ -213,8 +213,16 @@ const start = async () => {
   // --- State from the main process -------------------------------------------
   const applyState = (next: OverlayState, isFirst = false) => {
     const wasInteractive = state.isInteractive
+    const wasWhipOn = state.isWhipOn
     state = next
     applyLanguage(state.language === 'en' ? 'en' : 'es')
+
+    // Put away mid-swing: the whip comes to rest at once, so nothing keeps redrawing.
+    if (wasWhipOn && !state.isWhipOn) {
+      const at = clampToScreen({ x: whip.gripX, y: whip.gripY })
+      whip.reset(at.x, at.y)
+      fx.update(10)
+    }
 
     if (WHIP_PROFILES[state.whipProfile] && state.whipProfile !== profile) {
       // Another whip in the same hand: it starts where the old one was held.

@@ -409,7 +409,7 @@ const ledgerSchema = z.object({
  */
 export const loadLedger = (file: string): Ledger => {
   try {
-    const parsed = ledgerSchema.safeParse(JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')))
+    const parsed = ledgerSchema.safeParse(JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')))
 
     return parsed.success ? (parsed.data as Ledger) : emptyLedger()
   } catch {

@@ -13,7 +13,11 @@ const what = process.argv[2]
 
 const run = args => {
   console.log(`> ${claude} ${args.join(' ')}`)
-  const result = spawnSync(claude, args, { stdio: 'inherit', shell: process.platform === 'win32' && !process.env.CLAUDE_BIN })
+  // On Windows the npm shim (claude.cmd) needs a shell; then every argument is quoted, paths with spaces included.
+  const isShell = process.platform === 'win32' && !process.env.CLAUDE_BIN
+  const result = isShell
+    ? spawnSync([claude, ...args].map(arg => `"${arg}"`).join(' '), { stdio: 'inherit', shell: true })
+    : spawnSync(claude, args, { stdio: 'inherit' })
 
   if (result.error) {
     console.error(`Could not run "${claude}": ${result.error.message}. Install Claude Code or set CLAUDE_BIN to its executable.`)

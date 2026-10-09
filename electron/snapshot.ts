@@ -108,7 +108,7 @@ export const parseSnapshot = (text: string): Snapshot | null => {
   let raw: unknown
 
   try {
-    raw = JSON.parse(text.replace(/^﻿/, ''))
+    raw = JSON.parse(text.replace(/^\uFEFF/, ''))
   } catch {
     return null
   }

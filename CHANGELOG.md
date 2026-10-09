@@ -39,7 +39,8 @@ First public release. Oficina de agentes grew out of a private, whip-first deskt
 - Every file read from disk (snapshots, transcripts, ledger, config) is validated with Zod, field by field; a bad value falls back alone. `config.json` is read with or without a BOM and written atomically.
 - Pages run sandboxed with context isolation and a strict Content-Security-Policy; navigation, new windows, permissions and network access are blocked for them.
 - IPC is accepted only from the app's own pages and windows.
-- Electron fuses: `runAsNode` off, `NODE_OPTIONS` off, app loaded only from `app.asar`, asar integrity validation on.
+- Electron fuses: `runAsNode` off, `NODE_OPTIONS` off, Node inspector flags off, app loaded only from `app.asar`, asar integrity validation on.
+- Releases are uploaded as drafts and published by hand, with a `SHA256SUMS.txt` for every `.exe`.
 - No telemetry. The only network call is the optional update check.
 
 [Unreleased]: https://github.com/jrojo-LEEX/oficina-de-agentes/compare/v1.0.0...HEAD

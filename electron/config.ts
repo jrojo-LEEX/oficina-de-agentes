@@ -104,14 +104,19 @@ export const FIELDS = schema.shape
 
 const freshDefaults = (): Config => structuredClone(DEFAULTS)
 
+/** Fields version 1 never had: any of them says the file is not version 1's. */
+const NEW_IN_V2 = ['isWhipOn', 'language', 'isUpdateCheck', 'clientFolders', 'isOnboarded']
+
 /**
  * Brings an older config up to this version. Version 1 (no `configVersion`)
  * is the whip-first app's: whoever used it had the whip in hand and the
  * client folders read from `clients` and `clientes`, so both stay as they were.
  */
 export const migrate = (raw: Record<string, unknown>): Record<string, unknown> => {
-  // The old app always wrote every field: an empty file is not one of its.
-  const version = typeof raw.configVersion === 'number' ? raw.configVersion : Object.keys(raw).length > 0 ? 1 : CONFIG_VERSION
+  // The old app always wrote every field, and none of this version's own:
+  // a hand-written file without `configVersion` is read as this version.
+  const isOld = Object.keys(raw).length > 0 && !NEW_IN_V2.some(key => key in raw)
+  const version = typeof raw.configVersion === 'number' ? raw.configVersion : isOld ? 1 : CONFIG_VERSION
   let next = { ...raw }
 
   if (version < 2) {
@@ -131,7 +136,7 @@ export const parseConfig = (text: string): Config => {
   let raw: unknown
 
   try {
-    raw = JSON.parse(text.replace(/^﻿/, ''))
+    raw = JSON.parse(text.replace(/^\uFEFF/, ''))
   } catch {
     return freshDefaults()
   }
@@ -145,20 +150,52 @@ export const parseConfig = (text: string): Config => {
 /** What the file holds: two-space JSON, UTF-8 without a byte-order mark. */
 export const serializeConfig = (config: Config) => `${JSON.stringify(config, null, 2)}\n`
 
-/** Reads the config, or the defaults when there is none. */
-export const loadConfig = (file: string): Config => {
+/** Whether a config's text is JSON at all (a hand edit with a stray comma is not). */
+const isJson = (text: string) => {
   try {
-    return parseConfig(fs.readFileSync(file, 'utf8'))
+    JSON.parse(text.replace(/^\uFEFF/, ''))
+
+    return true
   } catch {
-    return freshDefaults()
+    return false
   }
 }
+
+/**
+ * Reads the config, or the defaults when there is none. A file that is not
+ * JSON is first copied aside (`config.json.broken-<time>`), so the person's
+ * edits are never overwritten by the defaults; `brokenCopy` says where.
+ */
+export const loadConfigFile = (file: string, now = Date.now()): { config: Config; brokenCopy: string | null } => {
+  let text: string
+
+  try {
+    text = fs.readFileSync(file, 'utf8')
+  } catch {
+    return { config: freshDefaults(), brokenCopy: null }
+  }
+
+  if (isJson(text)) return { config: parseConfig(text), brokenCopy: null }
+
+  const brokenCopy = `${file}.broken-${new Date(now).toISOString().replace(/[:.]/g, '-')}`
+
+  try {
+    fs.copyFileSync(file, brokenCopy)
+  } catch {
+    return { config: freshDefaults(), brokenCopy: null }
+  }
+
+  return { config: freshDefaults(), brokenCopy }
+}
+
+/** Reads the config, or the defaults when there is none or it cannot be read. */
+export const loadConfig = (file: string): Config => loadConfigFile(file).config
 
 /** Writes a file aside and swaps it in, so a crash never leaves half of it. Never with a byte-order mark. */
 export const writeAtomic = (file: string, text: string) => {
   fs.mkdirSync(path.dirname(file), { recursive: true })
   const aside = `${file}.${process.pid}.tmp`
-  fs.writeFileSync(aside, Buffer.from(text.replace(/^﻿/, ''), 'utf8'))
+  fs.writeFileSync(aside, Buffer.from(text.replace(/^\uFEFF/, ''), 'utf8'))
   fs.renameSync(aside, file)
 }
 

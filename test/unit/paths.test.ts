@@ -2,7 +2,7 @@ import * as path from 'node:path'
 
 import { describe, expect, test } from 'vitest'
 
-import { claudeDirOf, expandHome, isInside, liveDirOf, transcriptsDirOf, userDataDirOf } from '../../electron/paths'
+import { claudeDirOf, isAbsoluteLocal, isInside, liveDirOf, transcriptsDirOf, userDataDirOf } from '../../electron/paths'
 
 const HOME = path.resolve('/home/ana')
 
@@ -21,18 +21,24 @@ describe('where Claude Code keeps its folder', () => {
     expect(transcriptsDirOf(env, HOME)).toBe(path.join(path.resolve('/data/claude'), 'projects'))
   })
 
-  test('an empty or blank CLAUDE_CONFIG_DIR counts as unset; ~ means the home folder', () => {
-    expect(claudeDirOf({ CLAUDE_CONFIG_DIR: '   ' }, HOME)).toBe(path.join(HOME, '.claude'))
-    expect(claudeDirOf({ CLAUDE_CONFIG_DIR: '~/otra' }, HOME)).toBe(path.join(HOME, 'otra'))
-    expect(expandHome('~', HOME)).toBe(HOME)
+  test('only an absolute local path counts, as for the mod: blank, ~, relative and network paths are unset', () => {
+    const fallback = path.join(HOME, '.claude')
+
+    for (const value of ['', '   ', '~', '~/otra', 'otra', String.raw`.\otra`, String.raw`\\server\share`, '//server/share']) {
+      expect(claudeDirOf({ CLAUDE_CONFIG_DIR: value }, HOME), value).toBe(fallback)
+    }
+
+    expect(isAbsoluteLocal(String.raw`C:\data`)).toBe(true)
+    expect(isAbsoluteLocal('D:/data')).toBe(true)
+    expect(isAbsoluteLocal('/data')).toBe(true)
   })
 
   test('OFICINA_LIVE_DIR and OFICINA_USER_DATA_DIR point the app elsewhere', () => {
     const env = { CLAUDE_CONFIG_DIR: path.resolve('/data/claude'), OFICINA_LIVE_DIR: path.resolve('/tmp/live'), OFICINA_USER_DATA_DIR: path.resolve('/tmp/app') }
 
     expect(liveDirOf(env, HOME)).toBe(path.resolve('/tmp/live'))
-    expect(userDataDirOf(path.resolve('/roaming'), env, HOME)).toBe(path.resolve('/tmp/app'))
-    expect(userDataDirOf(path.resolve('/roaming'), {}, HOME)).toBe(path.join(path.resolve('/roaming'), 'oficina-de-agentes'))
+    expect(userDataDirOf(path.resolve('/roaming'), env)).toBe(path.resolve('/tmp/app'))
+    expect(userDataDirOf(path.resolve('/roaming'), {})).toBe(path.join(path.resolve('/roaming'), 'oficina-de-agentes'))
   })
 
   test('a path is kept inside its folder', () => {

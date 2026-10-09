@@ -29,7 +29,7 @@ Out of scope:
 
 - Claude Code itself: report it to Anthropic.
 - Bugs in Electron, Chromium or Node.js themselves: report them upstream (tell us too if the app should take a fix).
-- Known, documented trade-offs: the executables are not code-signed, updates are verified by checksum rather than signature, and the Node.js CLI inspect fuse is left on for end-to-end tests. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#security-model).
+- Known, documented trade-offs: the executables are not code-signed, and updates are verified by checksum rather than signature. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#security-model).
 - Attacks that need someone already running code as your Windows user, unless the app makes them meaningfully worse.
 
 ## What the app and the mod access
