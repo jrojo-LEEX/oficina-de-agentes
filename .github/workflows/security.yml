@@ -1,0 +1,66 @@
+# Secrets (Betterleaks over the whole history), code (CodeQL) and
+# dependencies (OSV-Scanner), on every push and pull request and weekly.
+
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Betterleaks
+    runs-on: ubuntu-latest
+    env:
+      BETTERLEAKS_VERSION: 1.9.0
+      # From the release's checksums.txt.
+      BETTERLEAKS_SHA256: f8b185a39ffcece2a1ca82bf3a4e7435cd81963ffd16b7a9128daf75f35f6de7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Betterleaks (checksum verified)
+        run: |
+          file="betterleaks_${BETTERLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLo "$file" "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VERSION}/${file}"
+          echo "${BETTERLEAKS_SHA256}  ${file}" | sha256sum -c -
+          tar -xzf "$file" betterleaks
+      - name: Scan the whole history
+        run: ./betterleaks git . --redact --exit-code 1
+      - name: Scan the tree
+        run: ./betterleaks dir . --redact --exit-code 1
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          languages: javascript-typescript, actions
+          queries: security-extended
+      - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+
+  osv:
+    name: OSV-Scanner
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
+    with:
+      scan-args: |-
+        --lockfile=package-lock.json

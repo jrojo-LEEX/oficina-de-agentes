@@ -1,0 +1,50 @@
+# A tag vX.Y.Z builds the installer and the portable from that commit, after
+# the same checks as CI, and uploads them to a DRAFT GitHub Release. A person
+# reviews the draft and publishes it; only then do installed copies update.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: The tag matches the app and the plugin
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'.TrimStart('v')
+          $app = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $plugin = (Get-Content plugin/oficina/.claude-plugin/plugin.json -Raw | ConvertFrom-Json).version
+          $entry = ((Get-Content .claude-plugin/marketplace.json -Raw | ConvertFrom-Json).plugins | Where-Object name -eq 'oficina').version
+          if ($tag -ne $app -or $tag -ne $plugin -or $tag -ne $entry) { throw "Tag $tag, app $app, plugin $plugin, marketplace $entry: they must match" }
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: node scripts/check-personal.mjs
+      - name: Build and upload to a draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem release -Filter '*.exe' | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Tee-Object -FilePath release/SHA256SUMS.txt
+          gh release upload '${{ github.ref_name }}' release/SHA256SUMS.txt --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

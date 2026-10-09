@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      build-and-test:
+        patterns: ['electron*', 'vite', 'vitest', '@playwright/*', '@biomejs/*', 'typescript', '@types/*']
+      runtime:
+        patterns: ['zod', 'i18next', 'electron-updater']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
