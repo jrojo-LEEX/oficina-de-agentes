@@ -27,8 +27,10 @@ jobs:
       - run: npm ci
       - name: The tag matches the app and the plugin
         shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
-          $tag = '${{ github.ref_name }}'.TrimStart('v')
+          $tag = $env:TAG.TrimStart('v')
           $app = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $plugin = (Get-Content plugin/oficina/.claude-plugin/plugin.json -Raw | ConvertFrom-Json).version
           $entry = ((Get-Content .claude-plugin/marketplace.json -Raw | ConvertFrom-Json).plugins | Where-Object name -eq 'oficina').version
@@ -45,6 +47,7 @@ jobs:
         shell: pwsh
         run: |
           Get-ChildItem release -Filter '*.exe' | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Tee-Object -FilePath release/SHA256SUMS.txt
-          gh release upload '${{ github.ref_name }}' release/SHA256SUMS.txt --clobber
+          gh release upload $env:TAG release/SHA256SUMS.txt --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}

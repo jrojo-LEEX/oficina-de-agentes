@@ -6,6 +6,7 @@
 
 import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
+import * as path from 'node:path'
 
 export type UpdateState = { kind: 'idle' | 'checking' | 'available' | 'ready' | 'none' | 'error'; version: string }
 
@@ -14,6 +15,35 @@ type Hooks = {
   onState: (state: UpdateState) => void
   /** A one-line Windows notification. */
   notify: (key: 'available' | 'portable' | 'ready' | 'none' | 'error', version: string) => void
+}
+
+/**
+ * A local feed for the update test, never honoured otherwise: only under
+ * test (OFICINA_E2E), only on this machine (loopback), and in a packaged
+ * app only when the build itself was marked as a test build by CI
+ * (`-c.extraMetadata.oficinaTestBuild=true`). A release build ignores it.
+ */
+export const testFeedOf = (env: Record<string, string | undefined>, isPackaged: boolean, isTestBuild: boolean) => {
+  const feed = env.OFICINA_UPDATE_URL
+
+  if (!feed || env.OFICINA_E2E !== '1' || (isPackaged && !isTestBuild)) return null
+
+  try {
+    const url = new URL(feed)
+
+    return url.protocol === 'http:' && (url.hostname === '127.0.0.1' || url.hostname === 'localhost') ? feed : null
+  } catch {
+    return null
+  }
+}
+
+/** Whether CI marked this build as a test build (its package.json says so). */
+const isTestBuild = () => {
+  try {
+    return (require(path.join(app.getAppPath(), 'package.json')) as { oficinaTestBuild?: unknown }).oficinaTestBuild === true
+  } catch {
+    return false
+  }
 }
 
 const CHECK_EVERY_MS = 6 * 60 * 60 * 1000
@@ -25,8 +55,11 @@ export const isPortable = () => Boolean(process.env.PORTABLE_EXECUTABLE_FILE)
 let state: UpdateState = { kind: 'idle', version: '' }
 let hooks: Hooks | null = null
 let timer: ReturnType<typeof setInterval> | null = null
+let firstCheck: ReturnType<typeof setTimeout> | null = null
 /** A check the person asked for answers even "you are up to date". */
 let isAsked = false
+/** The test feed in use, if any. */
+let feed: string | null = null
 
 const set = (next: UpdateState) => {
   state = next
@@ -43,7 +76,7 @@ export const setupUpdates = (given: Hooks) => {
   autoUpdater.logger = null
 
   // Tests point the updater at a local feed instead of GitHub.
-  const feed = process.env.OFICINA_UPDATE_URL
+  feed = testFeedOf(process.env, app.isPackaged, isTestBuild())
 
   if (feed) {
     autoUpdater.setFeedURL({ provider: 'generic', url: feed })
@@ -74,7 +107,7 @@ export const setupUpdates = (given: Hooks) => {
 /** Checks now. `isAskedFor`: the person asked, so the answer is said even when there is nothing new. */
 export const checkNow = (isAskedFor = false) => {
   // Run from the source code there is nothing to replace, unless a test feed says otherwise.
-  if (!app.isPackaged && !process.env.OFICINA_UPDATE_URL) return
+  if (!app.isPackaged && !feed) return
 
   isAsked = isAskedFor
   autoUpdater.checkForUpdates().catch(() => set({ kind: 'error', version: '' }))
@@ -83,11 +116,13 @@ export const checkNow = (isAskedFor = false) => {
 /** Turns the periodic check on or off. */
 export const scheduleUpdates = (isOn: boolean) => {
   if (timer) clearInterval(timer)
+  if (firstCheck) clearTimeout(firstCheck)
   timer = null
+  firstCheck = null
 
   if (!isOn) return
 
-  setTimeout(() => checkNow(), FIRST_CHECK_MS)
+  firstCheck = setTimeout(() => checkNow(), FIRST_CHECK_MS)
   timer = setInterval(() => checkNow(), CHECK_EVERY_MS)
 }
 

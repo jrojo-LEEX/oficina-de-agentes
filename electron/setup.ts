@@ -12,6 +12,9 @@ import { isOldMod, parseSnapshot } from './snapshot'
 export const PLUGIN_NAME = 'oficina'
 /** A snapshot newer than this says the mod is running right now. */
 const RECENT_MS = 10 * 60_000
+/** The same bounds the live reader keeps: a snapshot is a few kilobytes. */
+const MAX_BYTES = 2 * 1024 * 1024
+const MAX_FILES = 500
 
 export type ModSource = 'marketplace' | 'folder' | 'seen' | null
 
@@ -85,10 +88,12 @@ export const setupStatus = (claudeDir: string, liveDir: string, now: number, env
   let isSeenOld = false
 
   try {
-    for (const name of fs.readdirSync(liveDir)) {
-      if (!name.endsWith('.json')) continue
-
+    for (const name of fs.readdirSync(liveDir).filter(one => one.endsWith('.json')).slice(0, MAX_FILES)) {
       const file = path.join(liveDir, name)
+      const stat = fs.statSync(file)
+
+      if (!stat.isFile() || stat.size > MAX_BYTES) continue
+
       const snapshot = parseSnapshot(fs.readFileSync(file, 'utf8'))
 
       if (!snapshot || now - snapshot.updatedAt > RECENT_MS) continue

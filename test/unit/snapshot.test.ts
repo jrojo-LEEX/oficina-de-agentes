@@ -89,6 +89,18 @@ describe('reading the live folder', () => {
     expect(fs.existsSync(path.join(dir, 'broken.json'))).toBe(true)
   })
 
+  test('files that are not snapshots are never swept, however old', () => {
+    const dir = tempDir('live')
+    const old = new Date(NOW - 3 * 24 * 60 * 60 * 1000)
+    fs.writeFileSync(path.join(dir, 'settings.json'), '{"theme":"dark"}')
+    fs.writeFileSync(path.join(dir, 'broken.json'), '{ "session":')
+    fs.utimesSync(path.join(dir, 'settings.json'), old, old)
+    fs.utimesSync(path.join(dir, 'broken.json'), old, old)
+
+    expect(readLive(dir, NOW)).toEqual([])
+    expect(fs.readdirSync(dir).sort()).toEqual(['broken.json', 'settings.json'])
+  })
+
   test('no folder yet: no sessions, no error', () => {
     expect(readLive(path.join(tempDir(), 'missing'), NOW)).toEqual([])
   })

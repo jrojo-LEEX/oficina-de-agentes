@@ -61,7 +61,7 @@ const es = {
     diagnostics: 'Reportar que se trabó…',
     setup: 'Estado y ayuda…',
     checkUpdates: 'Buscar actualizaciones',
-    isUpdateCheck: 'Buscar actualizaciones solo',
+    isUpdateCheck: 'Buscar actualizaciones automáticamente',
     restartToUpdate: 'Reiniciar para actualizar a {{version}}',
     openAtLogin: 'Abrir al iniciar Windows',
     openConfig: 'Abrir configuración (atajos)…',

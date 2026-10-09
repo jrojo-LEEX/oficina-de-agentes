@@ -813,6 +813,34 @@ const handle = (channel: string, listener: (event: IpcMainInvokeEvent, ...args: 
     return listener(event, ...args)
   })
 
+/** The same error is written once a minute at most, and the log stops growing at 1 MB. */
+const ERROR_REPEAT_MS = 60_000
+const ERROR_LOG_MAX_BYTES = 1024 * 1024
+const lastErrors = new Map<string, number>()
+
+/** The page's errors, in a file next to the config: what went wrong, when. */
+const logError = (text: string) => {
+  const line = text.slice(0, 4000)
+  const now = Date.now()
+
+  if (now - (lastErrors.get(line) ?? 0) < ERROR_REPEAT_MS) return
+
+  if (lastErrors.size > 200) lastErrors.clear()
+  lastErrors.set(line, now)
+
+  try {
+    const file = path.join(app.getPath('userData'), 'errors.log')
+    const size = fs.existsSync(file) ? fs.statSync(file).size : 0
+
+    // Full: the older half goes, the newer half stays.
+    if (size > ERROR_LOG_MAX_BYTES) fs.writeFileSync(file, fs.readFileSync(file).subarray(Math.floor(size / 2)))
+
+    fs.appendFileSync(file, `${new Date(now).toISOString()} ${line}\n`)
+  } catch {
+    // Nowhere to write: nothing more to do.
+  }
+}
+
 const wireRenderer = () => {
   handle('ready', () => {
     // A renderer that (re)loads gets the agents on the next read.
@@ -865,14 +893,7 @@ const wireRenderer = () => {
 
   on('diagnostics', (_event, report) => saveDiagnostics(report))
 
-  on('renderer-error', (_event, text) => {
-    // The page's errors, in a file next to the config: what went wrong, when.
-    try {
-      fs.appendFileSync(path.join(app.getPath('userData'), 'errors.log'), `${new Date().toISOString()} ${String(text).slice(0, 4000)}\n`)
-    } catch {
-      // Nowhere to write: nothing more to do.
-    }
-  })
+  on('renderer-error', (_event, text) => logError(String(text)))
   handle('save-recording', (_event, name, bytes) => saveRecording(name, bytes))
 
   handle('selftest-shot', async (_event, name) => {
@@ -961,7 +982,7 @@ const takeCosts = (sessions: LiveSession[]) => {
 
   for (const session of sessions) {
     const usd = (session.usage as { usd?: unknown } | undefined | null)?.usd
-    const entry = ledger.sessions[session.id]
+    const entry = Object.hasOwn(ledger.sessions, session.id) ? ledger.sessions[session.id] : undefined
 
     if (entry && typeof usd === 'number' && usd > entry.usd) entry.usd = usd
   }

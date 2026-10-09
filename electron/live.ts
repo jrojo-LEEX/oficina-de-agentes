@@ -41,14 +41,18 @@ export const readLive = (dir: string, now: number): LiveSession[] => {
       if (!stat.isFile() || stat.size > MAX_BYTES) continue
 
       const snapshot = parseSnapshot(fs.readFileSync(file, 'utf8'))
-      const updatedAt = snapshot?.updatedAt || stat.mtimeMs
+      // Not a snapshot: left alone, never swept (the folder may be one the person named).
+      if (!snapshot) continue
 
-      if (now - updatedAt > LIVE_SWEEP_MS) {
+      const { updatedAt } = snapshot
+
+      // Only a snapshot, by the mod's own file naming, dead for a day is swept.
+      if (now - updatedAt > LIVE_SWEEP_MS && /^[\w.-]+\.json$/.test(name)) {
         fs.rmSync(file, { force: true })
         continue
       }
 
-      if (!snapshot || now - updatedAt > LIVE_FRESH_MS || snapshot.isEnded) continue
+      if (now - updatedAt > LIVE_FRESH_MS || snapshot.isEnded) continue
 
       sessions.push({
         id: snapshot.session,

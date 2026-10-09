@@ -52,7 +52,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Install the Claude Code CLI
-        run: npm install --global @anthropic-ai/claude-code
+        run: npm install --global @anthropic-ai/claude-code@2.1.295
       - run: node scripts/plugin.mjs validate
       - run: node scripts/plugin.mjs test
 
@@ -69,8 +69,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      # The same build as a release, except that Playwright may attach to it
+      # (the inspector fuse is off in releases).
       - name: Build the installer and the portable
-        run: npm run dist
+        run: npm run dist -- -c.electronFuses.enableNodeCliInspectArguments=true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-build
@@ -137,8 +139,10 @@ jobs:
         run: |
           npm run icon
           npm run build
-          npx electron-builder --win nsis --publish never -c.directories.output=release-old
-          npx electron-builder --win nsis --publish never -c.directories.output=feed -c.extraMetadata.version=99.0.0
+          # Test builds: Playwright may attach, and the app honours a local feed.
+          $test = @('-c.electronFuses.enableNodeCliInspectArguments=true', '-c.extraMetadata.oficinaTestBuild=true')
+          npx electron-builder --win nsis --publish never -c.directories.output=release-old @test
+          npx electron-builder --win nsis --publish never -c.directories.output=feed -c.extraMetadata.version=99.0.0 @test
       - name: Install the older one
         shell: pwsh
         run: |
@@ -149,6 +153,7 @@ jobs:
       - name: Serve the newer one and update to it
         shell: pwsh
         env:
+          OFICINA_E2E: '1'
           OFICINA_UPDATE_URL: http://127.0.0.1:8765/
           OFICINA_E2E_NEXT_VERSION: 99.0.0
         run: |

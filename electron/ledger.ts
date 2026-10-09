@@ -127,6 +127,15 @@ const bucket = (entry: SessionEntry, at: number): DayBucket => {
   return entry.days[day]!
 }
 
+/** Names an object may never be keyed by: they would reach Object.prototype. */
+const RESERVED = new Set(['__proto__', 'constructor', 'prototype'])
+/** A session id as Claude Code writes them (a UUID), or a transcript's file name. */
+const SESSION_ID = /^[\w.-]{1,100}$/
+/** A model id (`claude-opus-5-5`, `vendor/model:tag`). */
+const MODEL_ID = /^[\w.:@/-]{1,100}$/
+
+export const isSafeKey = (key: string, pattern: RegExp) => pattern.test(key) && !RESERVED.has(key)
+
 const entryOf = (ledger: Ledger, id: string): SessionEntry => {
   ledger.sessions[id] ??= {
     id,
@@ -195,6 +204,10 @@ export const takeLine = (ledger: Ledger, line: string, fileSession: string, isMa
   }
 
   const id = typeof o.sessionId === 'string' && o.sessionId ? o.sessionId : fileSession
+
+  // An id that is not one is not counted (and never keys an object).
+  if (!isSafeKey(id, SESSION_ID)) return
+
   const entry = entryOf(ledger, id)
 
   // The latest folder wins: a session moved to a project counts in that project.
@@ -245,18 +258,18 @@ export const takeLine = (ledger: Ledger, line: string, fileSession: string, isMa
   day.replies += 1
 
   // Claude Code's own notices (`<synthetic>`) carry a usage but no model: not counted per model.
-  if (typeof message.model === 'string' && message.model && !message.model.startsWith('<')) {
+  const model = typeof message.model === 'string' && isSafeKey(message.model, MODEL_ID) ? message.model : ''
+
+  if (model) {
     day.models ??= {}
-    const share = (day.models[message.model] ??= { replies: 0, fresh: 0, output: 0, cacheRead: 0 })
+    const share = (day.models[model] ??= { replies: 0, fresh: 0, output: 0, cacheRead: 0 })
     share.replies += 1
     share.fresh += n('input_tokens') + n('cache_creation_input_tokens') + n('output_tokens')
     share.output += n('output_tokens')
     share.cacheRead += n('cache_read_input_tokens')
   }
 
-  if (typeof message.model === 'string' && !message.model.startsWith('<')) {
-    entry.models[message.model] = (entry.models[message.model] ?? 0) + 1
-  }
+  if (model) entry.models[model] = (entry.models[model] ?? 0) + 1
 }
 
 /** Every transcript under `root`, with the session it belongs to and whether it is the main conversation. */
@@ -331,7 +344,11 @@ export const scan = async (ledger: Ledger, root: string) => {
         carry = end >= 0 ? text.slice(end + 1) : text
 
         for (const line of whole.split('\n')) {
-          if (line.trim()) takeLine(ledger, line, session, isMain)
+          try {
+            if (line.trim()) takeLine(ledger, line, session, isMain)
+          } catch {
+            // One odd line never stops the scan: it is skipped.
+          }
         }
 
         position += bytesRead
@@ -359,13 +376,14 @@ const dayBucket = z.object({
   cacheRead: count,
   output: count,
   replies: count,
-  models: z.record(z.string(), z.object({ replies: count, fresh: count, output: count, cacheRead: count })).optional(),
+  models: z.record(z.string().refine(key => isSafeKey(key, MODEL_ID)), z.object({ replies: count, fresh: count, output: count, cacheRead: count })).optional(),
 })
 const ledgerSchema = z.object({
   version: z.literal(4),
   files: z.record(z.string(), z.object({ offset: count, size: count })),
+  // Keys that could reach Object.prototype make the whole ledger be rebuilt.
   sessions: z.record(
-    z.string(),
+    z.string().refine(key => isSafeKey(key, SESSION_ID)),
     z.object({
       id: z.string(),
       project: z.string(),
@@ -378,7 +396,7 @@ const ledgerSchema = z.object({
       usd: count,
       cwd: z.string(),
       hours: z.record(z.string(), count),
-      models: z.record(z.string(), count),
+      models: z.record(z.string().refine(key => isSafeKey(key, MODEL_ID)), count),
       recentIds: z.array(z.string()),
     }),
   ),

@@ -75,6 +75,42 @@ describe('the spending ledger', () => {
     expect(summaryOf(fresh)).toEqual(summaryOf(ledger))
   })
 
+  test('a hostile session id or model name never reaches Object.prototype, and the scan goes on', async () => {
+    const root = tempDir('projects')
+    transcript(root)
+    const dir = path.join(root, 'C--work-evil')
+    fs.mkdirSync(dir, { recursive: true })
+    const at = new Date(Date.UTC(2026, 9, 9, 13)).toISOString()
+    const usage = { input_tokens: 1, output_tokens: 1 }
+    fs.writeFileSync(
+      path.join(dir, '__proto__.jsonl'),
+      [
+        { type: 'user', cwd: 'C:/evil', timestamp: at },
+        { type: 'assistant', timestamp: at, message: { id: 'x1', usage } },
+        { type: 'assistant', sessionId: 'constructor', timestamp: at, message: { id: 'x2', usage } },
+        { type: 'assistant', sessionId: SESSION, timestamp: at, message: { id: 'x3', model: '__proto__', usage } },
+      ]
+        .map(line => JSON.stringify(line))
+        .join('\n') + '\n',
+    )
+    const ledger = emptyLedger()
+    await scan(ledger, root)
+
+    expect(({} as Record<string, unknown>).project).toBeUndefined()
+    expect(({} as Record<string, unknown>).replies).toBeUndefined()
+    expect(Object.keys(ledger.sessions)).toEqual([SESSION])
+    // Its good lines still count, the hostile model is just not named.
+    expect(Object.values(ledger.sessions[SESSION]!.days)[0]!.replies).toBe(3)
+    expect(Object.keys(ledger.sessions[SESSION]!.models)).toEqual(['claude-opus-5-5'])
+  })
+
+  test('a stored ledger with a hostile key is rebuilt', () => {
+    const file = path.join(tempDir('app'), 'ledger.json')
+    fs.writeFileSync(file, '{"version":4,"files":{},"sessions":{"__proto__":{"id":"x"}}}')
+
+    expect(loadLedger(file)).toEqual(emptyLedger())
+  })
+
   test('a missing or unreadable ledger starts empty', () => {
     const dir = tempDir('app')
     fs.writeFileSync(path.join(dir, 'ledger.json'), 'not json')
