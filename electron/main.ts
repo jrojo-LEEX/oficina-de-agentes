@@ -12,6 +12,7 @@ import {
   Menu,
   nativeImage,
   Notification,
+  protocol,
   screen,
   session,
   shell,
@@ -20,7 +21,6 @@ import {
 import type { IpcMainEvent, IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { pathToFileURL } from 'node:url'
 
 import { changesOf } from './changes'
 import type { Seen } from './changes'
@@ -29,7 +29,7 @@ import type { Config } from './config'
 import { currentLanguage, languageOf, localeOf, setLanguage, t } from './i18n'
 import { readLive } from './live'
 import { loadLedger, saveLedger, scan, summaryOf } from './ledger'
-import { claudeDirOf, ENV, LEGACY_USER_DATA_NAME, liveDirOf, transcriptsDirOf, userDataDirOf } from './paths'
+import { claudeDirOf, ENV, isInside, LEGACY_USER_DATA_NAME, liveDirOf, transcriptsDirOf, userDataDirOf } from './paths'
 import { MOD_COMMANDS, RELEASES_URL, REPO_URL } from './repo'
 import { sceneAt, SCENES } from './scenes'
 import type { SceneKind } from './scenes'
@@ -94,6 +94,14 @@ const e2e = {
   },
   setup: () => {
     if (IS_E2E) openSetup()
+  },
+  /** Checks for an update now (the test points the updater at a local feed). */
+  checkUpdates: () => {
+    if (IS_E2E) checkNow(true)
+  },
+  updateState: () => updateState(),
+  installUpdate: () => {
+    if (IS_E2E) installNow()
   },
 }
 if (IS_E2E) (globalThis as { __oficinaE2E?: typeof e2e }).__oficinaE2E = e2e
@@ -298,8 +306,45 @@ const moveToDisplay = (id: number) => {
   send('command', { type: 'recenter' })
 }
 
+/**
+ * The pages are served from the app's own scheme, `app://oficina/`, out of
+ * the built `dist` folder and nothing else: a standard, secure origin, so
+ * the pages' CSP 'self' means exactly these files, and file:// needs no
+ * extra privileges (that fuse is off).
+ */
+const SCHEME = 'app'
+const HOST = 'oficina'
+const DIST = path.join(__dirname, '..', 'dist')
+const TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.wav': 'audio/wav',
+  '.woff2': 'font/woff2',
+}
+
+protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }])
+
+const servePages = () =>
+  protocol.handle(SCHEME, request => {
+    const url = new URL(request.url)
+    const file = path.join(DIST, decodeURIComponent(url.pathname))
+    const type = TYPES[path.extname(file).toLowerCase()]
+
+    if (url.host !== HOST || !type || !isInside(DIST, file)) return new Response('Not found', { status: 404 })
+
+    try {
+      return new Response(fs.readFileSync(file), { headers: { 'content-type': type, 'x-content-type-options': 'nosniff' } })
+    } catch {
+      return new Response('Not found', { status: 404 })
+    }
+  })
+
 /** The page's own files: the only thing the windows may load. */
-const pageUrl = (name: string) => pathToFileURL(path.join(__dirname, '..', 'dist', name)).toString()
+const pageUrl = (name: string) => `${SCHEME}://${HOST}/${name}`
 
 const createWindow = () => {
   const area = targetDisplay().workArea
@@ -1182,6 +1227,7 @@ if (!IS_SELFTEST && !app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     harden()
+    servePages()
 
     // The first run after the rename takes the old folder's config and ledger along.
     if (!IS_SELFTEST && !IS_E2E && !process.env[ENV.userDataDir]) carryOver(legacyDir, app.getPath('userData'))
