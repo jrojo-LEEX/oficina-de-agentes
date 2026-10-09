@@ -1,0 +1,29 @@
+# Dependencies and build output
+node_modules/
+dist/
+dist-electron/
+release/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Working material that is never published (real data, local tools)
+video/
+selftest-out/
+latigo-overlay/
+oficina-preview.png
+.claude/
+!.claude-plugin/
+
+# The mod's engine-written types and debug log
+plugin/*/.claude-plugin/types/
+plugin/*/debug/
+
+# Never: the app's config, ledger and logs, or local env files
+config.json
+ledger.json
+errors.log
+diagnostico-*.json
+.env
+.env.*
