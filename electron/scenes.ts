@@ -3,15 +3,19 @@
 // flagged as a demo, the session is labelled DEMO, and nothing here reaches
 // a real agent or notifies anyone.
 
+// Imported with its extension so the node:test suites can load this file as
+// it is; tsc rewrites it to `.js` (rewriteRelativeImportExtensions).
+import { t } from './i18n.ts'
 import type { LiveSession } from './shared'
 
 export type SceneKind = 'team' | 'rough' | 'chaos'
 
-export const SCENES: { value: SceneKind; label: string }[] = [
-  { value: 'team', label: 'Equipo de seis' },
-  { value: 'rough', label: 'Entrega accidentada' },
-  { value: 'chaos', label: 'Oficina caótica' },
-]
+export const SCENES: { value: SceneKind; readonly label: string }[] = (['team', 'rough', 'chaos'] as const).map(value => ({
+  value,
+  get label() {
+    return t(`tray.scenes.${value}`)
+  },
+}))
 
 /** The session id every scene uses: what tells it apart from a real one. */
 export const SCENE_ID = 'demo-escena'
@@ -21,7 +25,10 @@ const LOOP = 60
 
 type Step = { at: number; status?: string; activity?: string; detail?: string; file?: string; isWrite?: boolean; outcome?: 'ok' | 'err' }
 
-type Cast = { id: string; name: string; type: string; enters: number; parentId?: string; steps: Step[] }
+/** `name` is a key of `scenes.*`: the cast is named in the language of the moment. */
+type Cast = { id: string; name: CastName; type: string; enters: number; parentId?: string; steps: Step[] }
+
+type CastName = 'explorer' | 'planner' | 'builder' | 'builder2' | 'reviewer' | 'tester' | 'migrator' | 'deployer'
 
 const work = (at: number, activity: string, detail: string, file?: string, isWrite = false, outcome: 'ok' | 'err' = 'ok'): Step => ({
   at,
@@ -38,21 +45,21 @@ const CASTS: Record<SceneKind, { boss: Step[]; cast: Cast[]; usage: number }> = 
     usage: 42,
     boss: [work(0, 'working', ''), { at: 50, status: 'idle', activity: 'working', detail: '' }],
     cast: [
-      { id: 'e', name: 'Explorador', type: 'Explore', enters: 1, steps: [work(2, 'searching', 'Grep TODO', 'src/app.ts'), work(8, 'reading', 'Read router.ts', 'src/router.ts'), { at: 26, status: 'done' }] },
-      { id: 'p', name: 'Planificador', type: 'Plan', enters: 2.5, steps: [work(4, 'reading', 'Read README.md', 'README.md'), work(12, 'working', ''), { at: 30, status: 'done' }] },
-      { id: 'i1', name: 'Implementador', type: 'general-purpose', enters: 4, steps: [work(6, 'editing', 'Edit app.ts', 'src/app.ts', true), work(14, 'tool', 'Bash npm', undefined, false, 'err'), work(18, 'tool', 'Bash npm', undefined, false), { at: 38, status: 'done' }] },
-      { id: 'i2', name: 'Implementadora', type: 'general-purpose', enters: 5.5, parentId: 'i1', steps: [work(8, 'editing', 'Edit app.ts', 'src/app.ts', true), work(16, 'editing', 'Edit api.ts', 'src/api.ts', true), { at: 40, status: 'done' }] },
-      { id: 'r', name: 'Revisor', type: 'general-purpose', enters: 7, steps: [work(10, 'reading', 'Read app.ts', 'src/app.ts'), work(20, 'waiting', 'Edit app.ts'), work(24, 'editing', 'Edit app.ts', 'src/app.ts', true), { at: 44, status: 'done' }] },
-      { id: 't', name: 'Tester', type: 'general-purpose', enters: 8.5, parentId: 'r', steps: [work(12, 'tool', 'Bash test', 'test/app.test.ts'), work(22, 'editing', 'Edit app.test.ts', 'test/app.test.ts', true), { at: 46, status: 'done' }] },
+      { id: 'e', name: 'explorer', type: 'Explore', enters: 1, steps: [work(2, 'searching', 'Grep TODO', 'src/app.ts'), work(8, 'reading', 'Read router.ts', 'src/router.ts'), { at: 26, status: 'done' }] },
+      { id: 'p', name: 'planner', type: 'Plan', enters: 2.5, steps: [work(4, 'reading', 'Read README.md', 'README.md'), work(12, 'working', ''), { at: 30, status: 'done' }] },
+      { id: 'i1', name: 'builder', type: 'general-purpose', enters: 4, steps: [work(6, 'editing', 'Edit app.ts', 'src/app.ts', true), work(14, 'tool', 'Bash npm', undefined, false, 'err'), work(18, 'tool', 'Bash npm', undefined, false), { at: 38, status: 'done' }] },
+      { id: 'i2', name: 'builder2', type: 'general-purpose', enters: 5.5, parentId: 'i1', steps: [work(8, 'editing', 'Edit app.ts', 'src/app.ts', true), work(16, 'editing', 'Edit api.ts', 'src/api.ts', true), { at: 40, status: 'done' }] },
+      { id: 'r', name: 'reviewer', type: 'general-purpose', enters: 7, steps: [work(10, 'reading', 'Read app.ts', 'src/app.ts'), work(20, 'waiting', 'Edit app.ts'), work(24, 'editing', 'Edit app.ts', 'src/app.ts', true), { at: 44, status: 'done' }] },
+      { id: 't', name: 'tester', type: 'general-purpose', enters: 8.5, parentId: 'r', steps: [work(12, 'tool', 'Bash test', 'test/app.test.ts'), work(22, 'editing', 'Edit app.test.ts', 'test/app.test.ts', true), { at: 46, status: 'done' }] },
     ],
   },
   rough: {
     usage: 88,
     boss: [work(0, 'working', ''), { at: 14, status: 'waiting', activity: 'waiting', detail: 'Bash deploy' }, work(24, 'tool', 'Bash deploy'), { at: 52, status: 'idle', activity: 'working', detail: '' }],
     cast: [
-      { id: 'a', name: 'Migrador', type: 'general-purpose', enters: 1, steps: [work(3, 'editing', 'Edit schema.sql', 'db/schema.sql', true), work(9, 'tool', 'Bash migrate', undefined, false, 'err'), work(13, 'tool', 'Bash migrate', undefined, false, 'err'), work(17, 'tool', 'Bash migrate'), { at: 34, status: 'done' }] },
-      { id: 'b', name: 'Revisor', type: 'general-purpose', enters: 2, steps: [work(5, 'reading', 'Read schema.sql', 'db/schema.sql'), work(11, 'waiting', 'Edit schema.sql'), work(20, 'editing', 'Edit schema.sql', 'db/schema.sql', true), { at: 36, status: 'done' }] },
-      { id: 'c', name: 'Deployer', type: 'general-purpose', enters: 3, steps: [work(6, 'tool', 'Bash build', undefined, false, 'err'), work(15, 'tool', 'Bash build', undefined, false, 'err'), { at: 22, status: 'failed' }] },
+      { id: 'a', name: 'migrator', type: 'general-purpose', enters: 1, steps: [work(3, 'editing', 'Edit schema.sql', 'db/schema.sql', true), work(9, 'tool', 'Bash migrate', undefined, false, 'err'), work(13, 'tool', 'Bash migrate', undefined, false, 'err'), work(17, 'tool', 'Bash migrate'), { at: 34, status: 'done' }] },
+      { id: 'b', name: 'reviewer', type: 'general-purpose', enters: 2, steps: [work(5, 'reading', 'Read schema.sql', 'db/schema.sql'), work(11, 'waiting', 'Edit schema.sql'), work(20, 'editing', 'Edit schema.sql', 'db/schema.sql', true), { at: 36, status: 'done' }] },
+      { id: 'c', name: 'deployer', type: 'general-purpose', enters: 3, steps: [work(6, 'tool', 'Bash build', undefined, false, 'err'), work(15, 'tool', 'Bash build', undefined, false, 'err'), { at: 22, status: 'failed' }] },
     ],
   },
   chaos: {
@@ -60,7 +67,7 @@ const CASTS: Record<SceneKind, { boss: Step[]; cast: Cast[]; usage: number }> = 
     boss: [work(0, 'working', ''), { at: 18, status: 'waiting', activity: 'waiting', detail: 'Write config' }, work(26, 'editing', 'Edit config.ts', 'src/config.ts', true)],
     cast: Array.from({ length: 10 }, (_, i) => ({
       id: `x${i}`,
-      name: ['Explorador', 'Planificador', 'Revisor', 'Tester', 'Implementador'][i % 5]!,
+      name: (['explorer', 'planner', 'reviewer', 'tester', 'builder'] as const)[i % 5]!,
       type: ['Explore', 'Plan', 'general-purpose', 'general-purpose', 'general-purpose'][i % 5]!,
       enters: 0.6 * i,
       parentId: i > 4 ? `x${i - 5}` : undefined,
@@ -80,11 +87,11 @@ const CASTS: Record<SceneKind, { boss: Step[]; cast: Cast[]; usage: number }> = 
   },
 }
 
-/** The scene at `t` seconds into it, as a live session; `now` is epoch ms. */
-export const sceneAt = (kind: SceneKind, t: number, now: number): LiveSession => {
+/** The scene `seconds` into it, as a live session; `now` is epoch ms. */
+export const sceneAt = (kind: SceneKind, seconds: number, now: number): LiveSession => {
   const scene = CASTS[kind]
-  const at = t % LOOP
-  const run = Math.floor(t / LOOP)
+  const at = seconds % LOOP
+  const run = Math.floor(seconds / LOOP)
   const startOfRun = now - at * 1000
 
   const agents = scene.cast
@@ -98,7 +105,7 @@ export const sceneAt = (kind: SceneKind, t: number, now: number): LiveSession =>
         // Each run's agents are new ones, so they walk in again.
         id: `${one.id}-${run}`,
         seq: scene.cast.indexOf(one),
-        name: one.name,
+        name: t(`scenes.${one.name}`),
         type: one.type,
         kind: 'subagent',
         status: last.status,

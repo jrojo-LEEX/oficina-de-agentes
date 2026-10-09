@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { changesOf } from '../electron/changes.ts'
 import { SCENE_ID, sceneAt } from '../electron/scenes.ts'
 import { fromReplay, toReplay } from '../src/film.ts'
+import { setLanguage } from '../src/i18n.ts'
 import { Office, roleOf } from '../src/office/office.ts'
 import { Props } from '../src/office/props.ts'
 import type { LiveSession, OficinaAgent } from '../src/office/types.ts'
@@ -70,6 +71,9 @@ test('two agents writing the same file are flagged; reading it is not writing it
   assert.ok(shared.has('s:b'))
   assert.equal(shared.has('s:c'), false)
   assert.ok(office.tooltipOf('s:a', NOW).some(line => line.includes('también escribe app.ts')))
+  setLanguage('en')
+  assert.ok(office.tooltipOf('s:a', NOW).some(line => line.includes('is also writing app.ts')))
+  setLanguage('es')
 })
 
 test('the folder map counts touches by top folder of the project', () => {

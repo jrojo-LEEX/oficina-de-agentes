@@ -10,11 +10,12 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
+    <!-- Texts marked data-t / data-t-title are filled in the language of the moment (main.ts). -->
     <canvas id="office" hidden></canvas>
     <canvas id="stage"></canvas>
     <div id="card" hidden></div>
     <div id="empty" role="status" hidden></div>
-    <ul id="roster" class="visually-hidden" aria-label="Agentes"></ul>
+    <ul id="roster" class="visually-hidden"></ul>
     <div id="toast" aria-live="polite"></div>
     <section id="player" hidden>
       <canvas id="player-canvas"></canvas>
@@ -23,61 +24,69 @@
         <button id="player-slow" type="button">½×</button>
         <button id="player-normal" type="button">1×</button>
         <button id="player-fast" type="button">2×</button>
-        <button id="player-close" type="button">Cerrar</button>
+        <button id="player-close" type="button" data-t="common.close"></button>
       </div>
     </section>
     <section id="spend" hidden>
       <header>
-        <strong>Gasto</strong>
+        <strong data-t="spend.title"></strong>
         <span id="spend-periods"></span>
         <span id="spend-views"></span>
-        <button id="spend-close" type="button">Cerrar</button>
+        <button id="spend-close" type="button" data-t="common.close"></button>
       </header>
       <p id="spend-limits"></p>
       <p id="spend-total"></p>
       <div id="spend-charts">
         <figure>
-          <figcaption>Últimos 30 días: tiempo activo (barras) y tokens nuevos (línea)</figcaption>
+          <figcaption data-t="spend.chartDaily"></figcaption>
           <canvas id="spend-daily" width="520" height="110"></canvas>
         </figure>
         <figure>
-          <figcaption>Cuándo trabajás (en el período elegido)</figcaption>
+          <figcaption data-t="spend.chartHours"></figcaption>
           <canvas id="spend-hours" width="250" height="110"></canvas>
         </figure>
       </div>
       <table>
         <thead>
-          <tr><th id="spend-name">Proyecto</th><th>Sesiones</th><th>Tiempo activo</th><th>Entrada</th><th>Salida</th><th>Caché leída</th><th>Costo</th></tr>
+          <tr>
+            <th id="spend-name"></th>
+            <th data-t="spend.columns.count"></th>
+            <th data-t="spend.columns.active"></th>
+            <th data-t="spend.columns.input"></th>
+            <th data-t="spend.columns.output"></th>
+            <th data-t="spend.columns.cacheRead"></th>
+            <th data-t="spend.columns.cost"></th>
+          </tr>
         </thead>
         <tbody id="spend-rows"></tbody>
       </table>
-      <p id="spend-note">Tiempo activo: el tiempo entre mensajes de cada sesión, sin contar pausas de más de 5 minutos. Entrada: tokens nuevos de entrada, incluidos los que se guardan en caché. Caché leída: el contexto que se vuelve a leer en cada respuesta, mucho más barato. Subagentes incluidos. Costo: el que informó Claude Code, solo de las sesiones que el mod Oficina vio en vivo.</p>
+      <p id="spend-note" data-t="spend.note"></p>
     </section>
     <section id="report" hidden>
       <header>
-        <strong>Parte del día</strong>
+        <strong data-t="report.title"></strong>
         <span id="report-totals"></span>
-        <button id="report-close" type="button">Cerrar</button>
+        <button id="report-close" type="button" data-t="common.close"></button>
       </header>
       <ol id="report-list"></ol>
     </section>
 
     <div id="controls" hidden>
-      <button id="mute" type="button" title="Silenciar" aria-label="Silenciar">
+      <button id="mute" type="button" data-t-title="tray.mute">
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <path d="M3 7.5h3l4-3.5v12l-4-3.5H3z" fill="currentColor" />
           <path class="waves" d="M13 7a4.2 4.2 0 0 1 0 6M15.2 4.8a7.4 7.4 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
           <path class="slash" d="M13 7.5l5 5M18 7.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
         </svg>
       </button>
-      <input id="volume" type="range" min="0" max="100" step="1" aria-label="Volumen" title="Volumen" />
-      <button id="hide" type="button" title="Ocultar el látigo" aria-label="Ocultar el látigo">
+      <input id="volume" type="range" min="0" max="100" step="1" data-t-title="tray.volume" />
+      <button id="hide" type="button" data-t-title="whip.hide">
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <path d="M2.5 10s3-5 7.5-5 7.5 5 7.5 5-3 5-7.5 5-7.5-5-7.5-5z" fill="none" stroke="currentColor" stroke-width="1.6" />
           <path d="M4 16L16 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
         </svg>
       </button>
-      <button id="done" type="button" title="Volver a trabajar (modo pasivo)" aria-label="Volver a trabajar">
+      <button id="done" type="button" data-t-title="whip.done">
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>

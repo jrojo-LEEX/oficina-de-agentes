@@ -22,7 +22,7 @@ let hw = new Float64Array(0)
 /** Half the thong's width at `t` along it: thick at the handle, a thread at the tip. */
 const halfWidth = (t: number) =>
   t < 0.85
-    ? 7 + (1.8 - 7) * Math.pow(t / 0.85, 0.8)
+    ? 7 + (1.8 - 7) * (t / 0.85) ** 0.8
     : 1.8 + (0.7 - 1.8) * ((t - 0.85) / 0.15)
 
 /** Catmull-Rom through the simulation's points, into the shared buffers. */

@@ -1,21 +1,16 @@
 // Achievements for the whip: unlocked once, kept in the renderer's own
 // storage across restarts. Nothing here touches an agent.
 
+import { t } from '../i18n.ts'
 import type { Storage } from './stats.ts'
 
 export type Achievement = { id: string; title: string; detail: string }
 
-export const ACHIEVEMENTS: readonly Achievement[] = [
-  { id: 'first-hit', title: 'Primer golpe', detail: 'Le pegaste a un agentito.' },
-  { id: 'first-critical', title: 'Primer crítico', detail: 'La punta le dio de lleno.' },
-  { id: 'boss', title: 'Le pegaste al jefe', detail: 'Y sus agentes festejaron.' },
-  { id: 'combo-5', title: 'Combo ×5', detail: 'Cinco golpes seguidos.' },
-  { id: 'combo-10', title: 'Combo ×10', detail: 'Diez golpes seguidos.' },
-  { id: 'triple-critical', title: 'Triple crítico', detail: 'Tres críticos en diez segundos.' },
-  { id: 'day-100', title: 'Cien en un día', detail: '100 golpes en un solo día.' },
-  { id: 'total-1000', title: 'Mil golpes', detail: '1000 golpes en total.' },
-  { id: 'dodged-10', title: 'Escurridizos', detail: 'Te esquivaron 10 veces.' },
-]
+/** Every achievement, in order; each one's title and detail are `achievements.<id>.*`. */
+export const ACHIEVEMENT_IDS = ['first-hit', 'first-critical', 'boss', 'combo-5', 'combo-10', 'triple-critical', 'day-100', 'total-1000', 'dodged-10'] as const
+
+/** An achievement with its words in the current language. */
+export const achievementOf = (id: string): Achievement => ({ id, title: t(`achievements.${id}.title`), detail: t(`achievements.${id}.detail`) })
 
 const KEY = 'oficina.achievements'
 const TRIPLE_WINDOW_MS = 10_000
@@ -64,11 +59,11 @@ export class Achievements {
 
   /** Unlocks what is now earned and hands back what is new. */
   private unlock(ids: string[]): Achievement[] {
-    const fresh = ACHIEVEMENTS.filter(one => ids.includes(one.id) && !this.unlocked.has(one.id))
+    const fresh = ACHIEVEMENT_IDS.filter(id => ids.includes(id) && !this.unlocked.has(id))
 
-    for (const one of fresh) this.unlocked.add(one.id)
+    for (const id of fresh) this.unlocked.add(id)
 
-    return fresh
+    return fresh.map(achievementOf)
   }
 
   /** A hit landed; `now` in ms. */

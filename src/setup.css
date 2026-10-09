@@ -159,8 +159,13 @@ button.primary {
   outline-offset: 2px;
 }
 
-a {
+button.link {
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--accent);
+  text-decoration: underline;
+  font-size: inherit;
 }
 
 footer {

@@ -103,7 +103,7 @@ export const toReplay = (frames: FilmFrame[], fps = CLIP_FPS): ReplayFile => ({
 export const fromReplay = (data: unknown): { fps: number; frames: FilmFrame[] } | null => {
   const file = data as Partial<ReplayFile> | null
 
-  if (!file || file.format !== 'latigo-replay' || file.version !== 1 || !Array.isArray(file.frames)) return null
+  if (file?.format !== 'latigo-replay' || file.version !== 1 || !Array.isArray(file.frames)) return null
 
   const frames: FilmFrame[] = []
 

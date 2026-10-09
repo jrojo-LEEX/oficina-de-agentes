@@ -13,25 +13,25 @@
   <body>
     <main>
       <header>
-        <h1 id="title"></h1>
+        <h1 id="title">Oficina de agentes</h1>
         <p id="lead"></p>
         <p id="privacy" class="quiet"></p>
       </header>
 
       <section id="claude" class="step" data-state="pending">
-        <h2 id="claude-title"></h2>
+        <h2 id="claude-title">Claude Code</h2>
         <p id="claude-text"></p>
       </section>
 
       <section id="mod" class="step" data-state="pending">
-        <h2 id="mod-title"></h2>
+        <h2 id="mod-title">El mod Oficina</h2>
         <p id="mod-text"></p>
         <ol id="mod-commands"></ol>
         <p id="mod-restart" class="quiet" hidden></p>
       </section>
 
       <section id="sessions" class="step" data-state="pending">
-        <h2 id="sessions-title"></h2>
+        <h2 id="sessions-title">Tus agentes</h2>
         <p id="sessions-text"></p>
         <p>
           <button id="demo" type="button"></button>
@@ -40,10 +40,10 @@
       </section>
 
       <section id="options" class="step">
-        <h2 id="options-title"></h2>
-        <label><input id="opt-login" type="checkbox" /> <span id="opt-login-label"></span></label>
-        <label><input id="opt-updates" type="checkbox" /> <span id="opt-updates-label"></span></label>
-        <label><input id="opt-whip" type="checkbox" /> <span id="opt-whip-label"></span></label>
+        <h2 id="options-title">Opciones</h2>
+        <label for="opt-login"><input id="opt-login" type="checkbox" /> <span id="opt-login-label">Abrir al iniciar Windows</span></label>
+        <label for="opt-updates"><input id="opt-updates" type="checkbox" /> <span id="opt-updates-label">Buscar actualizaciones en GitHub</span></label>
+        <label for="opt-whip"><input id="opt-whip" type="checkbox" /> <span id="opt-whip-label">Látigo (modo juego)</span></label>
         <label class="row">
           <span id="opt-language-label"></span>
           <select id="opt-language">
@@ -56,7 +56,7 @@
 
       <footer>
         <p id="shortcuts" class="quiet"></p>
-        <p class="quiet"><span id="version"></span> · <a id="repo" href="#">GitHub</a></p>
+        <p class="quiet"><span id="version"></span> · <button id="repo" type="button" class="link">GitHub</button></p>
         <button id="done" type="button" class="primary"></button>
       </footer>
     </main>

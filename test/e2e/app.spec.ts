@@ -37,6 +37,10 @@ test('the guide speaks English when asked to', async () => {
 
     await expect(guide.locator('#mod-text')).toHaveText('Missing. In Claude Code, type these two commands:')
     await expect(guide.locator('#done')).toHaveText('Done')
+
+    // The office's corner speaks it too: no mod installed yet.
+    const office = await pageOf(app, 'index.html')
+    await expect(office.locator('#empty')).toHaveText('The Oficina mod is missing: tray → Status and help')
   } finally {
     await app.close()
     cleanUp(at)
@@ -75,7 +79,13 @@ test('two sessions with agents show up in the office, and a finished agent sends
 
     await expect(roster).toHaveCount(5)
     // Sessions in order of their ids: ses-1 (tienda), then ses-2 (blog).
-    await expect(roster).toContainText(['tienda · Claude · working', 'tienda · Explorador · trabajando', 'tienda · Revisor · trabajando', 'blog · Claude · working', 'blog · Planificador · trabajando'])
+    await expect(roster).toContainText([
+      'tienda · Claude · trabajando',
+      'tienda · Explorador · trabajando',
+      'tienda · Revisor · trabajando',
+      'blog · Claude · trabajando',
+      'blog · Planificador · trabajando',
+    ])
     await expect(office.locator('#office')).toBeVisible()
     await expect(office.locator('#empty')).toBeHidden()
 

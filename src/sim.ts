@@ -99,7 +99,7 @@ export class Whip {
       const t = i / (this.n - 1)
       // The taper is what makes a whip a whip: momentum handed down to ever
       // lighter leather has to show up as speed.
-      this.w[i] = i === 0 ? 0 : 1 / (1 - 0.93 * Math.pow(t, 0.7))
+      this.w[i] = i === 0 ? 0 : 1 / (1 - 0.93 * t ** 0.7)
       this.damp[i] = Math.exp(-cfg.drag * (1 + 2 * t) * h)
       this.bend[i] = (cfg.stiffness ?? 0.3) * (1 - t) * (1 - t)
     }

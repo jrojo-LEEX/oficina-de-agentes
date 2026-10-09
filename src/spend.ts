@@ -2,6 +2,9 @@
 // spending panel shows. The numbers come from the main process's ledger,
 // read off Claude Code's own transcripts.
 
+import { currentLanguage, localeOf, t } from './i18n.ts'
+import type { Language } from './i18n.ts'
+
 export type ModelBucket = { replies: number; fresh: number; output: number; cacheRead: number }
 
 export type DayBucket = {
@@ -60,12 +63,8 @@ export const modelName = (model: string) => {
 
 export type Period = 'today' | 'week' | 'month' | 'all'
 
-export const PERIODS: { value: Period; label: string }[] = [
-  { value: 'today', label: 'Hoy' },
-  { value: 'week', label: '7 días' },
-  { value: 'month', label: '30 días' },
-  { value: 'all', label: 'Todo' },
-]
+/** The periods the panel offers; their names are `spend.periods.*`. */
+export const PERIODS: readonly Period[] = ['today', 'week', 'month', 'all']
 
 export type Totals = DayBucket & { usd: number; sessions: number }
 
@@ -123,9 +122,20 @@ const add = (a: Totals, b: Totals): Totals => ({
   sessions: a.sessions + b.sessions,
 })
 
-/** What a session is grouped by: its project's folder, or, for the folderless ones, their name (one per day). */
+/**
+ * What a session is grouped by: its project's folder, or, for the folderless
+ * ones, their name (one per day). A key, never shown: the ledger names those
+ * `Sin carpeta · …` whatever the language.
+ */
+/** A project's name to show: the ledger names folderless sessions `Sin carpeta · dd/mm`, said here in the page's language. */
+export const projectName = (project: string) => {
+  const folderless = /^Sin carpeta · (.+)$/.exec(project)
+
+  return folderless ? t('spend.noFolder', { date: folderless[1] }) : project || t('spend.noProject')
+}
+
 const groupOf = (session: SpendSession) =>
-  (session.project.startsWith('Sin carpeta') ? session.project : session.projectPath || session.project || 'sin proyecto').toLowerCase()
+  (session.project.startsWith('Sin carpeta') ? session.project : session.projectPath || session.project || '-').toLowerCase()
 
 /** All tokens an answer went through: fresh input, cache written and read, and output. */
 export const tokensOf = (totals: DayBucket) => totals.input + totals.cacheWrite + totals.cacheRead + totals.output
@@ -150,7 +160,7 @@ export const spendOf = (sessions: SpendSession[], period: Period, now: number, c
     if (sum.sessions === 0) continue
 
     total = add(total, sum)
-    const project = session.project || 'sin proyecto'
+    const project = projectName(session.project)
     const key = groupOf(session)
     const old = projects.get(key)
     projects.set(key, {
@@ -160,7 +170,7 @@ export const spendOf = (sessions: SpendSession[], period: Period, now: number, c
       detail: session.projectPath,
       lastAt: Math.max(old?.lastAt ?? 0, session.lastAt),
     })
-    rows.push({ ...sum, key: session.id, name: session.title || `Sesión ${session.id.slice(0, 8)}`, detail: project, lastAt: session.lastAt })
+    rows.push({ ...sum, key: session.id, name: session.title || t('spend.session', { id: session.id.slice(0, 8) }), detail: project, lastAt: session.lastAt })
   }
 
   const byWork = (a: Row, b: Row) => freshOf(b) - freshOf(a) || b.activeMs - a.activeMs
@@ -179,8 +189,8 @@ export const spendOf = (sessions: SpendSession[], period: Period, now: number, c
     clients.set(key, {
       ...add(old ?? zero(), sum),
       key,
-      name: client ?? `${session.project || 'sin proyecto'} (sin cliente)`,
-      detail: client ? session.project : 'ninguna carpeta de cliente en la ruta',
+      name: client ?? t('spend.noClient', { project: projectName(session.project) }),
+      detail: client ? projectName(session.project) : t('spend.noClientDetail'),
       lastAt: Math.max(old?.lastAt ?? 0, session.lastAt),
     })
   }
@@ -295,32 +305,53 @@ export const mergeLimits = (reported: Limit[], now = Date.now()): Limit[] => {
   return [...byKind.values()].sort((a, b) => order(a.kind) - order(b.kind))
 }
 
-/** The windows' names in Spanish. */
-export const limitName = (kind: string) => (kind === 'five_hour' ? 'Límite de 5 h' : kind === 'seven_day' ? 'Límite semanal' : kind === 'spend_limit' ? 'Límite de gasto' : kind)
+/** A window's name in the current language; an unknown kind as it came. */
+export const limitName = (kind: string) => t(`spend.limits.${kind}`, { defaultValue: kind })
 
-/** "Límite de 5 h: 62 % (se renueva 18:40)". */
-export const limitLine = (limit: Limit) => {
+/** "Límite de 5 h: 62 % (se renueva 18:40)", "5-hour limit: 62% (resets 6:40 PM)". */
+export const limitLine = (limit: Limit, language: Language = currentLanguage()) => {
+  const locale = localeOf(language)
   const resets = limit.resetsAt ? new Date(limit.resetsAt) : null
-  const when = resets
-    ? resets.toDateString() === new Date().toDateString()
-      ? resets.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-      : resets.toLocaleString('es-AR', { weekday: 'short', hour: '2-digit', minute: '2-digit' })
-    : ''
+  const when =
+    resets && Number.isFinite(resets.getTime())
+      ? resets.toDateString() === new Date().toDateString()
+        ? resets.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+        : resets.toLocaleString(locale, { weekday: 'short', hour: '2-digit', minute: '2-digit' })
+      : ''
+  const values = { lng: language, name: t(`spend.limits.${limit.kind}`, { lng: language, defaultValue: limit.kind }), percent: Math.round(limit.percentUsed), when }
 
-  return `${limitName(limit.kind)}: ${Math.round(limit.percentUsed)} %${when ? ` (se renueva ${when})` : ''}`
+  return when ? t('spend.limitResets', values) : t('spend.limitLine', values)
 }
 
-/** 1 234 567 → "1,2 M"; 8 500 → "8,5 k". */
-export const shortTokens = (tokens: number) =>
+const formats = new Map<string, Intl.NumberFormat>()
+
+/** A number with exactly `digits` decimals, written the language's way: 5,0 or 5.0. */
+export const decimal = (value: number, digits = 1, language: Language = currentLanguage()) => {
+  const key = `${language}:${digits}`
+  let format = formats.get(key)
+
+  if (!format) {
+    format = new Intl.NumberFormat(localeOf(language), { minimumFractionDigits: digits, maximumFractionDigits: digits })
+    formats.set(key, format)
+  }
+
+  return format.format(value)
+}
+
+/** Dollars, the language's way: "US$ 2,50" or "US$2.50". */
+export const money = (usd: number, language: Language = currentLanguage()) => t('spend.money', { lng: language, amount: decimal(usd, 2, language) })
+
+/** 1 234 567 → "1,2 M" ("1.2 M" in English); 8 500 → "8,5 k". */
+export const shortTokens = (tokens: number, language: Language = currentLanguage()) =>
   tokens >= 1e9
-    ? `${(tokens / 1e9).toFixed(1).replace('.', ',')} B`
+    ? `${decimal(tokens / 1e9, 1, language)} B`
     : tokens >= 1e6
-      ? `${(tokens / 1e6).toFixed(1).replace('.', ',')} M`
+      ? `${decimal(tokens / 1e6, 1, language)} M`
       : tokens >= 1e3
-        ? `${(tokens / 1e3).toFixed(1).replace('.', ',')} k`
+        ? `${decimal(tokens / 1e3, 1, language)} k`
         : String(tokens)
 
-/** 4 500 000 ms → "1 h 15 min". */
+/** 4 500 000 ms → "1 h 15 min": the same in both languages. */
 export const shortTime = (ms: number) => {
   const minutes = Math.round(ms / 60_000)
 

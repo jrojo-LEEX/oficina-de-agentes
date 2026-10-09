@@ -13,16 +13,19 @@ import { Achievements } from './office/achievements.ts'
 import type { Achievement } from './office/achievements.ts'
 import { DayLog } from './office/daylog.ts'
 import { strikes } from './office/hits.ts'
-import { elapsedOf, Office } from './office/office.ts'
+import { bossStateOf, elapsedOf, Office, statusWord } from './office/office.ts'
 import type { ReactionKind } from './office/actors.ts'
 import { Stats } from './office/stats.ts'
 import { FLICKS, handAt, phaseAt } from './selftest.ts'
 import { Whip, WHIP_PROFILES } from './sim.ts'
 import type { WhipProfile } from './sim.ts'
-import { dailyOf, freshOf, hoursOf, limitLine, mergeLimits, PERIODS, shortTime, shortTokens, spendOf } from './spend.ts'
+import { localeOf, setLanguage, t } from './i18n.ts'
+import type { Language } from './i18n.ts'
+import type { LiveSession } from './office/types.ts'
+import { dailyOf, decimal, freshOf, hoursOf, limitLine, mergeLimits, money, PERIODS, shortTime, shortTokens, spendOf } from './spend.ts'
 import type { Limit, Period, SpendSession } from './spend.ts'
 import { Targets } from './targets.ts'
-import { TRICK_NAMES, TrickReader } from './tricks.ts'
+import { trickName, TrickReader } from './tricks.ts'
 
 const EDGE = 40
 const CONTROLS_MARGIN = 8
@@ -36,7 +39,6 @@ const COMBO_SHOW_MS = 900
 /** How loud the crack that says someone waits for permission is. */
 const ALERT_LOUDNESS = 0.55
 const TOAST_MS = 3800
-const STATUS_WORDS: Record<string, string> = { running: 'trabajando', idle: 'en espera', done: 'terminó', failed: 'falló', unknown: 'sin datos' }
 /** Sounds closer together than this are one: a crack and the hit it made never double up. */
 const SOUND_GAP_MS = 90
 /** A tip landing this fast is a critical: the speed of a crack, give or take, for the whip in hand. */
@@ -177,10 +179,42 @@ const start = async () => {
     }
   }
 
+  // --- Language ------------------------------------------------------------------
+  /** The language the page's texts are in now; null before the first state. */
+  let shownLanguage: Language | null = null
+
+  /**
+   * Puts every text in the language asked for: the page's fixed ones (marked
+   * `data-t`, and `data-t-title` for a tooltip), and whatever is open.
+   */
+  const applyLanguage = (language: Language) => {
+    if (language === shownLanguage) return
+
+    shownLanguage = language
+    setLanguage(language)
+    document.documentElement.lang = language
+    document.title = t('app.name')
+
+    for (const element of document.querySelectorAll<HTMLElement>('[data-t]')) element.textContent = t(element.dataset.t!)
+
+    for (const element of document.querySelectorAll<HTMLElement>('[data-t-title]')) {
+      element.title = t(element.dataset.tTitle!)
+      element.setAttribute('aria-label', element.title)
+    }
+
+    rosterList.setAttribute('aria-label', t('office.roster'))
+    renderRoster()
+    if (!spendPanel.hidden) renderSpend()
+    if (!report.hidden) renderReport()
+    cardText = ''
+    isOfficeDirty = true
+  }
+
   // --- State from the main process -------------------------------------------
   const applyState = (next: OverlayState, isFirst = false) => {
     const wasInteractive = state.isInteractive
     state = next
+    applyLanguage(state.language === 'en' ? 'en' : 'es')
 
     if (WHIP_PROFILES[state.whipProfile] && state.whipProfile !== profile) {
       // Another whip in the same hand: it starts where the old one was held.
@@ -194,6 +228,7 @@ const start = async () => {
 
     if (!state.isTargets) targets.clear()
 
+    office.isWhipOn = state.isWhipOn
     office.configure(state.officeCorner, state.officeSize, state.officeTheme, state.officeLayout, state.isCalm, state.officeStyle ?? 'ilustrado')
     audio.setVolume(state.isSelftest ? 0 : state.volume)
     audio.setMuted(state.isMuted)
@@ -208,14 +243,14 @@ const start = async () => {
     if (!state.isInteractive) panelMadeInteractive = false
 
     if (state.isInteractive !== wasInteractive) {
-      note(`modo ${state.isInteractive ? 'interactivo' : 'pasivo'}`)
+      note(`${state.isInteractive ? 'interactive' : 'passive'} mode`)
       isUsingControls = false
     }
 
     if (isFirst) {
-      if (state.isWhipOn) showHint(`${state.shortcuts.interactive} para agarrar el látigo`)
+      if (state.isWhipOn) showHint(t('whip.grab', { shortcut: state.shortcuts.interactive }))
     } else if (state.isInteractive !== wasInteractive) {
-      showHint(state.isInteractive ? (state.isWhipOn ? 'Agarrá el mango y sacudí' : 'Pasa el mouse por un agente para ver qué hace') : 'Modo pasivo')
+      showHint(t(state.isInteractive ? (state.isWhipOn ? 'whip.shake' : 'whip.hover') : 'whip.passive'))
     }
 
     isDirty = true
@@ -266,7 +301,7 @@ const start = async () => {
 
     if (wants !== isCapturing) {
       note(
-        `captura ${wants ? 'ON' : 'off'} · puntero ${Math.round(mouse.x)},${Math.round(mouse.y)} · agarrado=${isGrabbed} controles=${isUsingControls} mango=${isOnGrip} panel=${isOverControls()}`,
+        `capture ${wants ? 'ON' : 'off'} · pointer ${Math.round(mouse.x)},${Math.round(mouse.y)} · grabbed=${isGrabbed} controls=${isUsingControls} handle=${isOnGrip} panel=${isOverControls()}`,
       )
       isCapturing = wants
       overlay.setCapture(wants)
@@ -276,7 +311,7 @@ const start = async () => {
   }
 
   const release = () => {
-    if (isGrabbed) note('suelta el látigo')
+    if (isGrabbed) note('lets go of the whip')
     isGrabbed = false
     // Anchored where the hand actually is, not where the mouse ran ahead to.
     whip.setTarget(whip.gripX, whip.gripY)
@@ -291,7 +326,7 @@ const start = async () => {
 
     // No button held: whatever press was on the controls is over, even if its release was never seen.
     if (event.buttons === 0 && isUsingControls) {
-      note('controles: soltado sin evento de soltar')
+      note('controls: released without a release event')
       isUsingControls = false
     }
 
@@ -319,7 +354,7 @@ const start = async () => {
     }
 
     isGrabbed = true
-    note('agarra el látigo')
+    note('grabs the whip')
     grabOffset.x = mouse.x - whip.gripX
     grabOffset.y = mouse.y - whip.gripY
     canvas.setPointerCapture(event.pointerId)
@@ -367,11 +402,11 @@ const start = async () => {
     fx.crack(whip.x[tip], whip.y[tip], crack.intensity, dirX, dirY)
 
     if (state.isSelftest) {
-      const t = (last - test.startedAt) / 1000
+      const at = (last - test.startedAt) / 1000
 
-      if (phaseAt(t) === 'flick') {
+      if (phaseAt(at) === 'flick') {
         test.wantsShot = test.flickCracks.length === 0
-        test.flickCracks.push(Number(t.toFixed(3)))
+        test.flickCracks.push(Number(at.toFixed(3)))
       } else {
         test.slowCracks += 1
       }
@@ -463,7 +498,7 @@ const start = async () => {
         const trick = tricks.add(whip.x[tip], whip.y[tip], now / 1000)
 
         if (trick) {
-          shout = { text: TRICK_NAMES[trick], x: whip.x[tip], y: whip.y[tip] - 20, at: now }
+          shout = { text: trickName(trick), x: whip.x[tip], y: whip.y[tip] - 20, at: now }
           if (!state.isCalm) fx.crack(whip.x[tip], whip.y[tip], 0.35, 0, -1)
         }
       } else {
@@ -486,7 +521,7 @@ const start = async () => {
         const took = targets.touch(whip.px[tip], whip.py[tip], whip.x[tip], whip.y[tip], now / 1000)
 
         if (took !== null) {
-          shout = { text: `¡Blanco! ${took.toFixed(1).replace('.', ',')} s · racha ${targets.streak}`, x: whip.x[tip], y: whip.y[tip] - 20, at: now }
+          shout = { text: t('whip.target', { seconds: decimal(took, 1), streak: targets.streak }), x: whip.x[tip], y: whip.y[tip] - 20, at: now }
           crackSound(0.4)
           isDirty = true
         }
@@ -672,10 +707,10 @@ const start = async () => {
       !isVisible || !state.isOfficeShown || office.isShown
         ? ''
         : state.setup === 'no-mod' || state.setup === 'mod-off'
-          ? 'Falta el mod Oficina: bandeja → Estado y ayuda'
+          ? t('empty.noMod')
           : state.setup === 'old-mod'
-            ? 'Actualiza el mod Oficina: bandeja → Estado y ayuda'
-            : 'Abre Claude Code y lanza un agente'
+            ? t('empty.oldMod')
+            : t('empty.noSessions')
 
     if (emptyBadge.textContent !== text) emptyBadge.textContent = text
     if (emptyBadge.dataset.corner !== state.officeCorner) emptyBadge.dataset.corner = state.officeCorner
@@ -690,10 +725,10 @@ const start = async () => {
     if (!first) return
 
     const title = document.createElement('strong')
-    // A recording's news is not an achievement: no "Logro" in front.
-    title.textContent = first.id === 'film' ? first.title : `Logro: ${first.title}`
+    // A recording's news is not an achievement: no "Achievement" in front.
+    title.textContent = first.id === 'film' ? first.title : t('achievements.toast', { title: first.title })
     const detail = document.createElement('span')
-    detail.textContent = unlocked.length > 1 ? `${first.detail} (y ${unlocked.length - 1} más)` : first.detail
+    detail.textContent = unlocked.length > 1 ? t('achievements.more', { detail: first.detail, count: unlocked.length - 1 }) : first.detail
     toast.replaceChildren(title, detail)
     toast.classList.add('is-shown')
     clearTimeout(toastTimer)
@@ -716,13 +751,18 @@ const start = async () => {
     const now = Date.now()
     const totals = daylog.totals(now)
     const minutes = Math.round(totals.seconds / 60)
-    reportTotals.textContent = `${totals.agents} agentes · ${totals.done} terminaron · ${totals.failed} fallaron · ${minutes} min de trabajo`
+    reportTotals.textContent = [
+      t('report.agents', { count: totals.agents }),
+      t('report.done', { count: totals.done }),
+      t('report.failed', { count: totals.failed }),
+      t('report.minutes', { count: minutes }),
+    ].join(' · ')
 
     const rows = daylog.entries().map(entry => {
       const row = document.createElement('li')
       const who = document.createElement('span')
       who.className = 'who'
-      who.textContent = entry.name
+      who.textContent = entry.name || t('office.agent')
       const meta = document.createElement('small')
       meta.textContent = [entry.type, entry.session].filter(Boolean).join(' · ')
       who.append(meta)
@@ -733,7 +773,7 @@ const start = async () => {
       )
       const status = document.createElement('span')
       status.className = entry.status
-      status.textContent = `${STATUS_WORDS[entry.status] ?? entry.status}${entry.note ? ` (${entry.note})` : ''}`
+      status.textContent = `${statusWord(entry.status)}${entry.note ? ` (${entry.note})` : ''}`
       row.append(who, time, status)
 
       return row
@@ -741,7 +781,7 @@ const start = async () => {
 
     if (rows.length === 0) {
       const empty = document.createElement('li')
-      empty.textContent = 'Todavía ningún agente trabajó hoy.'
+      empty.textContent = t('report.empty')
       rows.push(empty)
     }
 
@@ -757,7 +797,7 @@ const start = async () => {
     const frames = kind === 'timelapse' ? film.lapseFrames : film.clipFrames
 
     if (frames.length < 2) {
-      say('Nada para grabar todavía', 'La oficina tiene que estar a la vista un rato.')
+      say(t('film.nothing'), t('film.nothingDetail'))
 
       return
     }
@@ -772,18 +812,18 @@ const start = async () => {
     if (isRendering) return
 
     isRendering = true
-    say(kind === 'clip' ? 'Grabando el clip…' : 'Grabando el timelapse…', `Tarda ${Math.ceil(frames.length / CLIP_FPS)} segundos.`)
+    say(t(kind === 'clip' ? 'film.recordingClip' : 'film.recordingLapse'), t('film.takes', { count: Math.ceil(frames.length / CLIP_FPS) }))
 
     try {
-      const caption = (index: number) => {
-        const time = new Date(frames[index]!.t)
-
-        return kind === 'clip' ? 'Látigo · clip' : `Látigo · timelapse · ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`
-      }
+      const locale = localeOf(shownLanguage ?? 'es')
+      const caption = (index: number) =>
+        kind === 'clip'
+          ? t('film.captionClip')
+          : t('film.captionLapse', { time: new Date(frames[index]!.t).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) })
       const bytes = await renderVideo(frames, CLIP_FPS, caption)
       await overlay.saveRecording(`oficina-${kind}-${stamp()}.webm`, bytes)
     } catch (error) {
-      say('No se pudo grabar', String(error).slice(0, 120))
+      say(t('film.failed'), String(error).slice(0, 120))
     } finally {
       isRendering = false
     }
@@ -803,7 +843,11 @@ const start = async () => {
     }
 
     drawFrame(playerCanvas.getContext('2d')!, playScratch, frame)
-    playerInfo.textContent = `Replay · ${playback.index + 1}/${playback.frames.length} · ${playback.speed}×`
+    playerInfo.textContent = t('film.player', {
+      index: playback.index + 1,
+      total: playback.frames.length,
+      speed: playback.speed.toLocaleString(localeOf(shownLanguage ?? 'es')),
+    })
     playback.index = (playback.index + 1) % playback.frames.length
   }
 
@@ -850,7 +894,7 @@ const start = async () => {
     const replay = fromReplay(data)
 
     if (!replay) {
-      say('Ese archivo no es un replay', 'Solo se abren replays exportados desde el látigo.')
+      say(t('film.notReplay'), t('film.notReplayDetail'))
 
       return
     }
@@ -868,6 +912,26 @@ const start = async () => {
   document.getElementById('player-fast')!.addEventListener('click', () => setSpeed(2))
   document.getElementById('player-close')!.addEventListener('click', closePlayback)
 
+  // --- The roster: what the office draws, as text ------------------------------------------
+  let rosterSessions: LiveSession[] = []
+
+  /** One line per boss and agent, for screen readers (and the end-to-end tests). */
+  const renderRoster = () => {
+    rosterList.replaceChildren(
+      ...rosterSessions
+        .flatMap(session => [
+          ...(session.boss ? [`${session.label || 'Claude Code'} · Claude · ${bossStateOf(session.boss.status)}`] : []),
+          ...session.agents.map(agent => `${session.label || 'Claude Code'} · ${agent.name || agent.type} · ${statusWord(agent.status)}`),
+        ])
+        .map(line => {
+          const item = document.createElement('li')
+          item.textContent = line
+
+          return item
+        }),
+    )
+  }
+
   // --- Time and tokens per project and session ------------------------------------------
   let spendSessions: SpendSession[] = []
   let spendPeriod: Period = 'today'
@@ -878,8 +942,6 @@ const start = async () => {
   let isSpendRead = false
   /** The account's rate-limit windows, as the freshest live session last reported them. */
   let limits: Limit[] = []
-
-  const WEEKDAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']
 
   /** Thirty days of bars (time) and a line (new tokens), each to its own scale. */
   const drawDaily = () => {
@@ -892,6 +954,7 @@ const start = async () => {
     const step = width / days.length
     const mostTime = Math.max(1, ...days.map(one => one.activeMs))
     const mostTokens = Math.max(1, ...days.map(one => one.fresh))
+    const locale = localeOf(shownLanguage ?? 'es')
     ctx.clearRect(0, 0, width, height)
     ctx.font = '10px "Segoe UI", system-ui, sans-serif'
     ctx.textAlign = 'center'
@@ -903,7 +966,7 @@ const start = async () => {
 
       if (i % 5 === 4 || i === days.length - 1) {
         ctx.fillStyle = '#7c828c'
-        ctx.fillText(`${one.date.getDate()}/${one.date.getMonth() + 1}`, i * step + step / 2, height - 3)
+        ctx.fillText(one.date.toLocaleDateString(locale, { day: 'numeric', month: 'numeric' }), i * step + step / 2, height - 3)
       }
     })
 
@@ -918,7 +981,7 @@ const start = async () => {
     ctx.stroke()
     ctx.fillStyle = '#9aa0aa'
     ctx.textAlign = 'left'
-    ctx.fillText(`máx ${shortTime(mostTime)} · ${shortTokens(mostTokens)} tokens`, 4, 10)
+    ctx.fillText(t('spend.chartMax', { time: shortTime(mostTime), tokens: shortTokens(mostTokens) }), 4, 10)
   }
 
   /** Weekdays by hours, warmer where more time went. */
@@ -927,6 +990,7 @@ const start = async () => {
     const ctx = canvas.getContext('2d')!
     const grid = hoursOf(spendSessions, spendPeriod, Date.now())
     const most = Math.max(1, ...grid.flat())
+    const weekdays = t('spend.weekdays').split(' ')
     const left = 20
     const top = 2
     const cell = Math.min((canvas.width - left) / 24, (canvas.height - top - 14) / 7)
@@ -936,7 +1000,7 @@ const start = async () => {
     grid.forEach((row, day) => {
       ctx.fillStyle = '#7c828c'
       ctx.textAlign = 'left'
-      ctx.fillText(WEEKDAYS[day]!, 0, top + day * cell + cell * 0.75)
+      ctx.fillText(weekdays[day] ?? '', 0, top + day * cell + cell * 0.75)
 
       row.forEach((ms, hour) => {
         const heat = ms / most
@@ -951,7 +1015,8 @@ const start = async () => {
     for (const hour of [0, 6, 12, 18]) ctx.fillText(String(hour), left + hour * cell + cell / 2, top + 7 * cell + 10)
   }
 
-  const money = (usd: number) => (usd > 0 ? `US$ ${usd.toFixed(2).replace('.', ',')}` : '—')
+  /** A cost, or a dash where none was reported. */
+  const cost = (usd: number) => (usd > 0 ? money(usd) : '—')
 
   const button = (label: string, isOn: boolean, onClick: () => void) => {
     const one = document.createElement('button')
@@ -980,30 +1045,34 @@ const start = async () => {
     if (spendView === 'clients' && clientFolders.length === 0) spendView = 'projects'
     const spend = spendOf(spendSessions, spendPeriod, Date.now(), clientFolders)
     document.getElementById('spend-periods')!.replaceChildren(
-      ...PERIODS.map(one => button(one.label, one.value === spendPeriod, () => ((spendPeriod = one.value), renderSpend()))),
+      ...PERIODS.map(one => button(t(`spend.periods.${one}`), one === spendPeriod, () => ((spendPeriod = one), renderSpend()))),
     )
+    const views: (typeof spendView)[] = ['projects', ...(clientFolders.length > 0 ? (['clients'] as const) : []), 'models', 'sessions']
     document.getElementById('spend-views')!.replaceChildren(
-      button('Por proyecto', spendView === 'projects', () => ((spendView = 'projects'), renderSpend())),
-      ...(clientFolders.length > 0 ? [button('Por cliente', spendView === 'clients', () => ((spendView = 'clients'), renderSpend()))] : []),
-      button('Por modelo', spendView === 'models', () => ((spendView = 'models'), renderSpend())),
-      button('Por sesión', spendView === 'sessions', () => ((spendView = 'sessions'), renderSpend())),
+      ...views.map(view => button(t(`spend.views.${view}`), spendView === view, () => ((spendView = view), renderSpend()))),
     )
-    document.getElementById('spend-limits')!.textContent = limits.map(limitLine).join(' · ')
+    document.getElementById('spend-limits')!.textContent = limits.map(limit => limitLine(limit)).join(' · ')
     drawDaily()
     drawHours()
     const total = spend.total
     document.getElementById('spend-total')!.textContent =
       spendSessions.length === 0
-        ? isSpendRead
-          ? 'Todavía no hay datos de gasto: aparecen cuando trabajes con Claude Code.'
-          : 'Leyendo las sesiones de Claude Code… (la primera vez tarda unos segundos)'
-        : `${total.sessions} sesiones · ${shortTime(total.activeMs)} activas · ${shortTokens(freshOf(total))} tokens nuevos (${shortTokens(total.output)} de salida) y ${shortTokens(total.cacheRead)} leídos de caché · ${total.replies} respuestas${total.usd > 0 ? ` · ${money(total.usd)} informados` : ''}`
-    document.getElementById('spend-name')!.textContent = { projects: 'Proyecto', clients: 'Cliente', models: 'Modelo', sessions: 'Sesión' }[spendView]
+        ? t(isSpendRead ? 'spend.none' : 'spend.reading')
+        : `${t('spend.totals', {
+            sessions: t('spend.sessions', { count: total.sessions }),
+            time: shortTime(total.activeMs),
+            fresh: shortTokens(freshOf(total)),
+            output: shortTokens(total.output),
+            cache: shortTokens(total.cacheRead),
+            replies: t('spend.replies', { count: total.replies }),
+          })}${total.usd > 0 ? ` · ${t('spend.reported', { money: money(total.usd) })}` : ''}`
+    document.getElementById('spend-name')!.textContent = t(`spend.columns.${spendView}`)
+    const locale = localeOf(shownLanguage ?? 'es')
     const rows = { projects: spend.projects, clients: spend.clients, models: spend.models, sessions: spend.sessions }[spendView].slice(0, 200)
     document.getElementById('spend-rows')!.replaceChildren(
       ...rows.map(row => {
         const tr = document.createElement('tr')
-        const when = new Date(row.lastAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+        const when = new Date(row.lastAt).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
         tr.append(
           cell(row.name, spendView === 'sessions' ? `${row.detail} · ${when}` : row.detail),
           cell(String(row.sessions)),
@@ -1012,7 +1081,7 @@ const start = async () => {
           cell(shortTokens(row.input + row.cacheWrite)),
           cell(shortTokens(row.output)),
           cell(shortTokens(row.cacheRead)),
-          cell(money(row.usd)),
+          cell(cost(row.usd)),
         )
 
         return tr
@@ -1049,8 +1118,8 @@ const start = async () => {
       .map(row => `${row.name} ${shortTime(row.activeMs)}`)
       .join(' · ')
     overlay.notify(
-      `Tu semana con Claude: ${shortTime(spend.total.activeMs)}, ${shortTokens(freshOf(spend.total))} tokens`,
-      `${spend.total.sessions} sesiones. ${top}`,
+      t('spend.weekTitle', { time: shortTime(spend.total.activeMs), tokens: shortTokens(freshOf(spend.total)) }),
+      t('spend.weekBody', { sessions: t('spend.sessions', { count: spend.total.sessions }), top }),
     )
   }
 
@@ -1077,9 +1146,9 @@ const start = async () => {
   })
 
   const selftestFrame = (now: number, elapsed: number) => {
-    const t = (now - test.startedAt) / 1000
-    const phase = phaseAt(t)
-    const hand = handAt(t, anchor)
+    const at = (now - test.startedAt) / 1000
+    const phase = phaseAt(at)
+    const hand = handAt(at, anchor)
     whip.setTarget(hand.x, hand.y)
     test.frames += 1
     test.worstFrameMs = Math.max(test.worstFrameMs, elapsed * 1000)
@@ -1164,19 +1233,8 @@ const start = async () => {
   overlay.onAgents(sessions => {
     office.setSessions(sessions)
     isOfficeDirty = true
-
-    // What the office draws, as text: one line per boss and agent.
-    rosterList.replaceChildren(
-      ...sessions.flatMap(session => [
-        ...(session.boss ? [`${session.label || 'Claude Code'} · Claude · ${session.boss.status}`] : []),
-        ...session.agents.map(agent => `${session.label || 'Claude Code'} · ${agent.name || agent.type} · ${STATUS_WORDS[agent.status] ?? agent.status}`),
-      ]).map(line => {
-        const item = document.createElement('li')
-        item.textContent = line
-
-        return item
-      }),
-    )
+    rosterSessions = sessions
+    renderRoster()
 
     // The account's limits, as every live session last heard them: one that has
     // been quiet a while still tells an old figure, so the latest window counts

@@ -2,13 +2,12 @@
 // figure eight, a double crack-back. Pure geometry over the last second
 // and a half; nothing learned, nothing sent anywhere.
 
+import { t } from './i18n.ts'
+
 export type Trick = 'circle' | 'eight' | 'double'
 
-export const TRICK_NAMES: Record<Trick, string> = {
-  circle: '¡Vuelta completa!',
-  eight: '¡Ocho!',
-  double: '¡Doble latigazo!',
-}
+/** What the screen shouts for a trick, in the current language. */
+export const trickName = (trick: Trick) => t(`whip.tricks.${trick}`)
 
 type Sample = { x: number; y: number; t: number }
 

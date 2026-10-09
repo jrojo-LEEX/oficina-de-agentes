@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
+import { setLanguage } from '../src/i18n.ts'
 import { strikes } from '../src/office/hits.ts'
 import { COLS, Office, SCALES } from '../src/office/office.ts'
 import { Achievements } from '../src/office/achievements.ts'
@@ -239,6 +240,11 @@ test('pointing at a character names it and says what it does', () => {
   assert.equal(office.actorAt((box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2), 's1:a')
   assert.equal(office.actorAt(1, 1), null)
   assert.deepEqual(office.tooltipOf('s1:a', Date.now()).slice(0, 3), ['a', 'Explore · leyendo', 'Read app.ts'])
+
+  // The same card in English, then back to the default.
+  setLanguage('en')
+  assert.deepEqual(office.tooltipOf('s1:a', Date.now()).slice(0, 2), ['a', 'Explore · reading'])
+  setLanguage('es')
 })
 
 test('someone waiting for permission makes the office say so', () => {

@@ -118,7 +118,7 @@ export class Fx {
   drawBursts(ctx: CanvasRenderingContext2D) {
     for (const flash of this.flashes) {
       const p = flash.age / flash.life
-      const alpha = Math.pow(1 - p, 1.5)
+      const alpha = (1 - p) ** 1.5
       const grow = 1 - (1 - p) * (1 - p)
       const radius = (18 + 34 * flash.intensity) * (0.45 + 0.55 * grow)
 

@@ -7,7 +7,9 @@
     "strict": true,
     "outDir": "dist-electron",
     "rootDir": "electron",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
   },
   "include": ["electron"]
 }

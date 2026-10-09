@@ -62,7 +62,8 @@ export class DayLog {
       const old = this.byKey.get(agent.key)
       const entry: DayEntry = {
         key: agent.key,
-        name: agent.name || agent.type || 'agente',
+        // Nameless: left blank, for the report to say "agent" in its own language.
+        name: agent.name || agent.type || '',
         type: agent.type,
         session: agent.session,
         startedAt: agent.startedAt || old?.startedAt || 0,

@@ -14,9 +14,10 @@ import type { PropBox } from './props.ts'
 import { bodyBox, drawActor, drawBossDesk, drawDesk } from './sprites.ts'
 import type { Look } from './sprites.ts'
 import type { Stats } from './stats.ts'
-import { freshOf, shortTime, shortTokens } from '../spend.ts'
+import { t } from '../i18n.ts'
+import { freshOf, money, shortTime, shortTokens } from '../spend.ts'
 import type { SpendSession } from '../spend.ts'
-import type { LiveSession, OficinaActivity, OficinaAgent, Outcome, Touch, UsageState } from './types.ts'
+import type { LiveSession, OficinaActivity, OficinaAgent, Outcome, UsageState } from './types.ts'
 
 export type Corner = 'br' | 'bl' | 'tr' | 'tl'
 export type Size = 's' | 'm' | 'l'
@@ -85,8 +86,6 @@ export const lookOf = (agent: { type: string; name: string }): Look =>
         ? 'glasses'
         : null
 
-const money = (usd: number) => `US$ ${usd.toFixed(2).replace('.', ',')}`
-
 const thousands = (tokens: number) => (tokens >= 1000 ? `${Math.round(tokens / 1000)}k` : String(tokens))
 
 /** Screen pixels per office pixel, by size: the pixel art, scaled up crisp. */
@@ -131,16 +130,11 @@ export const elapsedOf = (agent: OficinaAgent, now: number) => {
   return `${pad2(Math.floor(seconds / 60))}:${pad2(seconds % 60)}`
 }
 
-const ACTIVITY: Record<OficinaActivity, string> = {
-  working: 'trabajando',
-  reading: 'leyendo',
-  searching: 'buscando',
-  editing: 'editando',
-  tool: 'usando una herramienta',
-  waiting: 'espera tu permiso',
-}
+/** What an agent at work can be doing; each one's words are `activity.*`. */
+const ACTIVITIES = new Set<string>(['working', 'reading', 'searching', 'editing', 'tool', 'waiting'] satisfies OficinaActivity[])
 
-const ACTIVITIES = new Set<string>(Object.keys(ACTIVITY))
+/** An agent's name, or its type, or just "agent". */
+const nameOf = (agent: { name: string; type: string }) => agent.name || agent.type || t('office.agent')
 
 /** One agent of one session, under a key no other session's agent can share. */
 type Seated = OficinaAgent & { key: string; session: string; sessionId: string; isBoss: boolean; usage?: UsageState | null }
@@ -149,16 +143,25 @@ type SessionInfo = { label: string; cwd: string; updatedAt: number }
 
 export const stateOf = (agent: Seated) =>
   agent.isBoss && agent.status === 'idle'
-    ? 'te espera'
+    ? t('status.bossIdle')
     : agent.status === 'running'
-      ? ACTIVITY[agent.activity] ?? 'trabajando'
+      ? t(ACTIVITIES.has(agent.activity) ? `activity.${agent.activity}` : 'activity.working')
       : agent.status === 'idle'
-        ? 'en espera'
+        ? t('status.idle')
         : agent.status === 'done'
-          ? 'terminó'
+          ? t('status.done')
           : agent.status === 'failed'
-            ? `falló${agent.note ? ` (${agent.note})` : ''}`
-            : 'sin datos'
+            ? agent.note
+              ? t('status.failedWith', { note: agent.note })
+              : t('status.failed')
+            : t('status.unknown')
+
+/** An agent's status in a word, for lists: working, on hold, finished, failed, no data. */
+export const statusWord = (status: string) => t(`status.${status}`, { defaultValue: status })
+
+/** A live session's own Claude, as a list says it: working, waiting for permission, or waiting for you. */
+export const bossStateOf = (status: string) =>
+  status === 'working' ? t('status.running') : status === 'waiting' ? t('activity.waiting') : status === 'idle' ? t('status.bossIdle') : t('status.unknown')
 
 /** The session's own Claude as an agent the office can seat: never finishes, only goes. */
 const bossOf = (session: LiveSession): Seated | null => {
@@ -174,7 +177,7 @@ const bossOf = (session: LiveSession): Seated | null => {
     id: 'boss',
     seq: 0,
     name: session.label ? `Claude · ${session.label}` : 'Claude',
-    type: 'Claude principal',
+    type: t('office.bossType'),
     kind: 'subagent',
     status: boss.status === 'idle' ? 'idle' : 'running',
     activity,
@@ -231,6 +234,9 @@ export class Office {
   width = 0
   height = 0
 
+  /** The whip is in hand: only then do the hit counts show, in the card and the footer. */
+  isWhipOn = true
+
   constructor(stats: Stats | null = null) {
     this.stats = stats
   }
@@ -278,7 +284,7 @@ export class Office {
         const path = normalPath(touch.path)
         const list = writers.get(path) ?? []
 
-        if (!list.some(one => one.key === agent.key)) list.push({ key: agent.key, name: agent.name || agent.type || 'agente', path: touch.path })
+        if (!list.some(one => one.key === agent.key)) list.push({ key: agent.key, name: nameOf(agent), path: touch.path })
         writers.set(path, list)
       }
     }
@@ -310,7 +316,7 @@ export class Office {
         const path = normalPath(touch.path)
         const inside = cwd && path.startsWith(`${cwd}/`) ? path.slice(cwd.length + 1) : null
         const parts = inside ? inside.split('/') : []
-        const folder = inside === null ? 'afuera del proyecto' : parts.length > 1 ? parts[0]! : '(raíz)'
+        const folder = inside === null ? t('office.outside') : parts.length > 1 ? parts[0]! : t('office.root')
         counts.set(folder, (counts.get(folder) ?? 0) + 1)
       }
     }
@@ -674,7 +680,7 @@ export class Office {
       const span = agent.isBoss ? 2 * SLOT_W : SLOT_W
       const x = (place.x + span / 2) * s
       const y = (place.feet + 4) * s
-      labels.push({ text: agent.isBoss ? 'Claude' : (agent.name || agent.type || 'agente').slice(0, 16), x, y, color: agent.isBoss ? '#F5C542' : '#F5F0E6', size: small })
+      labels.push({ text: agent.isBoss ? 'Claude' : nameOf(agent).slice(0, 16), x, y, color: agent.isBoss ? '#F5C542' : '#F5F0E6', size: small })
       labels.push({ text: agent.isBoss ? stateOf(agent) : elapsedOf(agent, now), x, y: y + small + 3, color: '#9AA0AA', size: small })
     }
 
@@ -686,7 +692,9 @@ export class Office {
       h: this.pixels.height,
       px: this.pixels.snapshot(),
       scale: s,
-      title: ['Oficina', `en curso ${count.active}`, count.done ? `terminados ${count.done}` : '', count.isDemo ? 'DEMO' : ''].filter(Boolean).join(' · '),
+      title: [t('office.title'), t('office.active', { count: count.active }), count.done ? t('office.done', { count: count.done }) : '', count.isDemo ? 'DEMO' : '']
+        .filter(Boolean)
+        .join(' · '),
       labels,
       whip,
     }
@@ -712,7 +720,7 @@ export class Office {
     }
 
     const agent = this.agentOf(id)
-    this.stats?.record(agent ? agent.name || agent.type || 'agente' : 'agente', isCritical)
+    this.stats?.record(agent ? nameOf(agent) : t('office.agent'), isCritical)
 
     if (id.endsWith(':boss')) {
       // The boss got it: its own agents cheer.
@@ -763,46 +771,47 @@ export class Office {
 
     if (!agent) return []
 
-    const lines = [agent.name || agent.type || 'agente', `${agent.type || 'tipo desconocido'} · ${stateOf(agent)}`]
+    const lines = [nameOf(agent), `${agent.type || t('office.unknownType')} · ${stateOf(agent)}`]
 
     if (agent.detail) lines.push(agent.detail)
 
     if (agent.isBoss && agent.usage) {
       const { percent, tokens, usd } = agent.usage
-      const full = percent >= SWEATY_PERCENT ? ' · ¡casi lleno!' : ''
-      lines.push(`contexto ${percent}% (${thousands(tokens)} tokens)${usd > 0 ? ` · ${money(usd)}` : ''}${full}`)
+      const full = percent >= SWEATY_PERCENT ? ` · ${t('tooltip.nearlyFull')}` : ''
+      lines.push(`${t('tooltip.context', { percent, tokens: thousands(tokens) })}${usd > 0 ? ` · ${money(usd)}` : ''}${full}`)
     }
 
-    lines.push(`${agent.isBoss ? 'así hace' : 'lleva'} ${elapsedOf(agent, now)}${agent.session && !agent.isBoss ? ` · ${agent.session}` : ''}`)
+    lines.push(`${t(agent.isBoss ? 'tooltip.bossFor' : 'tooltip.agentFor', { time: elapsedOf(agent, now) })}${agent.session && !agent.isBoss ? ` · ${agent.session}` : ''}`)
 
     const spent = agent.isBoss ? this.spend.get(agent.sessionId) : undefined
 
     if (spent) {
-      lines.push(`esta sesión: ${shortTime(spent.activeMs)} activa · ${shortTokens(spent.tokens)} tokens nuevos · ${shortTokens(spent.cacheRead)} de caché`)
+      lines.push(t('tooltip.session', { time: shortTime(spent.activeMs), fresh: shortTokens(spent.tokens), cache: shortTokens(spent.cacheRead) }))
     }
 
     const silence = this.silenceOf(agent.sessionId, now)
 
     if (silence > STALE_LINK_MS) {
-      lines.push(`sin datos nuevos hace ${Math.round(silence / 1000)} s: lo de arriba puede estar viejo`)
+      lines.push(t('tooltip.stale', { seconds: Math.round(silence / 1000) }))
     }
 
     const parent = this.actors.get(key) ? this.parentOf(this.actors.get(key)!) : null
     const parentAgent = parent ? this.agentOf(parent.id) : undefined
 
-    if (parentAgent) lines.push(`lo lanzó ${parentAgent.isBoss ? 'el jefe' : parentAgent.name || parentAgent.type}`)
+    if (parentAgent) lines.push(t('tooltip.launchedBy', { name: parentAgent.isBoss ? t('tooltip.theBoss') : nameOf(parentAgent) }))
 
     const shared = this.sharedFiles(now).get(key)
 
-    if (shared) lines.push(`${shared.other} también escribe ${shared.file}`)
+    if (shared) lines.push(t('tooltip.shared', { other: shared.other, file: shared.file }))
 
     const trail = (agent.trail ?? []).slice(-6)
 
     if (trail.length > 0) {
-      lines.push(`herramientas: ${trail.map(one => (one === 'ok' ? '✓' : '✗')).join(' ')} (la última salió ${trail[trail.length - 1] === 'ok' ? 'bien' : 'mal'})`)
+      const marks = trail.map(one => (one === 'ok' ? '✓' : '✗')).join(' ')
+      lines.push(t(trail[trail.length - 1] === 'ok' ? 'tooltip.toolsOk' : 'tooltip.toolsBad', { marks }))
     }
 
-    if (this.stats) lines.push(`golpes este mes: ${this.stats.monthOf(agent.name || agent.type || 'agente')}`)
+    if (this.stats && this.isWhipOn) lines.push(t('tooltip.hitsMonth', { count: this.stats.monthOf(nameOf(agent)) }))
 
     return lines
   }
@@ -849,7 +858,9 @@ export class Office {
 
       // The last tool calls, one dot each under the desk: green went well, red did not.
       const trail = (agent?.trail ?? []).slice(-5)
-      trail.forEach((outcome: Outcome, index: number) => c.set(place.x + 13 + index * 2, place.feet + 2, outcome === 'ok' ? C.green : C.red))
+      trail.forEach((outcome: Outcome, index: number) => {
+        c.set(place.x + 13 + index * 2, place.feet + 2, outcome === 'ok' ? C.green : C.red)
+      })
     }
 
     this.props.paint(c, this.clock)
@@ -900,7 +911,7 @@ export class Office {
    */
   private readonly layers = new Map<string, { image: CanvasImageSource; clocks: { x: number; y: number }[] }>()
 
-  private layer(key: string, ratio: number, paint: (room: CanvasRenderingContext2D) => { x: number; y: number }[] | void) {
+  private layer(key: string, ratio: number, paint: (room: CanvasRenderingContext2D) => { x: number; y: number }[] | undefined) {
     const kept = this.layers.get(key)
 
     if (kept) {
@@ -1147,14 +1158,14 @@ export class Office {
     const count = this.tally()
     const stale = this.staleSessions(now).length
     const title = [
-      this.mood === 'party' ? 'Oficina · ¡viernes!' : this.mood === 'night' ? 'Oficina · de noche' : 'Oficina',
-      `en curso ${count.active}`,
-      count.waiting ? `${count.waiting} esperan tu permiso` : '',
-      count.done ? `terminados ${count.done}` : '',
-      count.failed ? `fallidos ${count.failed}` : '',
+      t(this.mood === 'party' ? 'office.titleParty' : this.mood === 'night' ? 'office.titleNight' : 'office.title'),
+      t('office.active', { count: count.active }),
+      count.waiting ? t('office.waiting', { count: count.waiting }) : '',
+      count.done ? t('office.done', { count: count.done }) : '',
+      count.failed ? t('office.failed', { count: count.failed }) : '',
       count.isDemo ? 'DEMO' : '',
-      stale ? `${stale === 1 ? '1 sesión' : `${stale} sesiones`} sin conexión` : '',
-      this.hall ? `${this.hall} sin escritorio` : '',
+      stale ? t('office.stale', { count: stale }) : '',
+      this.hall ? t('office.hall', { count: this.hall }) : '',
     ]
       .filter(Boolean)
       .join(' · ')
@@ -1254,7 +1265,7 @@ export class Office {
       if (!place || !agent) continue
 
       const span = agent.isBoss ? 2 * SLOT_W : SLOT_W
-      const name = (agent.name || agent.type || 'agente').slice(0, agent.isBoss ? 30 : 16)
+      const name = nameOf(agent).slice(0, agent.isBoss ? 30 : 16)
       const cx = ox + (place.x + span / 2) * s
       const cy = oy + (place.feet + 4) * s
       ctx.fillStyle = agent.isBoss ? ink.gold : agent.isDemo ? ink.dim : ink.text
@@ -1262,18 +1273,21 @@ export class Office {
       const silence = this.silenceOf(agent.sessionId, now)
       const isStale = agent.isBoss && silence > STALE_LINK_MS
       ctx.fillStyle = isStale ? ink.red : ink.dim
-      const second = isStale ? `sin conexión · ${Math.round(silence / 1000)} s` : agent.isBoss ? stateOf(agent) : elapsedOf(agent, now)
+      const second = isStale ? t('office.offline', { seconds: Math.round(silence / 1000) }) : agent.isBoss ? stateOf(agent) : elapsedOf(agent, now)
       ctx.fillText(second, cx, cy + small + 3, span * s - 6)
     }
 
-    // The whip's tally.
-    if (this.stats) {
-      const best = this.stats.employeeOfTheMonth()
+    // The account's limits, and the whip's tally while it is in hand.
+    if (this.stats || this.limits.length > 0) {
+      const tally = this.stats && this.isWhipOn ? this.stats : null
+      const best = tally?.employeeOfTheMonth()
       const footer = [
-        this.limits.length ? this.limits.map(one => `${one.kind === 'five_hour' ? '5 h' : one.kind === 'seven_day' ? 'semana' : 'gasto'} ${Math.round(one.percentUsed)} %`).join(' · ') : '',
-        `Golpes hoy: ${this.stats.today}`,
-        this.stats.criticalsToday ? `críticos: ${this.stats.criticalsToday}` : '',
-        best ? `Empleado del mes: ${best.name} (${best.hits})` : '',
+        this.limits
+          .map(one => t(one.kind === 'five_hour' ? 'office.limitFiveHour' : one.kind === 'seven_day' ? 'office.limitWeekly' : 'office.limitSpend', { percent: Math.round(one.percentUsed) }))
+          .join(' · '),
+        tally ? t('office.hitsToday', { count: tally.today }) : '',
+        tally?.criticalsToday ? t('office.criticals', { count: tally.criticalsToday }) : '',
+        best ? t('office.employee', { name: best.name, hits: best.hits }) : '',
       ]
         .filter(Boolean)
         .join(' · ')
@@ -1293,8 +1307,9 @@ export class Office {
       ctx.font = '12px "Segoe UI", system-ui, sans-serif'
       ctx.textAlign = 'left'
       ctx.fillStyle = ink.dim
-      ctx.fillText('Frentes:', x, y)
-      x += ctx.measureText('Frentes: ').width
+      const heading = t('office.fronts')
+      ctx.fillText(heading, x, y)
+      x += ctx.measureText(`${heading} `).width
 
       for (const [index, front] of fronts.entries()) {
         const bar = Math.max(4, Math.round((36 * front.count) / most))

@@ -127,10 +127,7 @@ const start = async () => {
   )
   $('demo').addEventListener('click', () => void bridge.demo())
   $('done').addEventListener('click', () => void bridge.close())
-  $('repo').addEventListener('click', event => {
-    event.preventDefault()
-    void bridge.open('repo')
-  })
+  $('repo').addEventListener('click', () => void bridge.open('repo'))
 
   setInterval(() => void bridge.refresh().then(render), REFRESH_MS)
 }

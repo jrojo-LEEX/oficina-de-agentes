@@ -3,6 +3,9 @@ import { describe, expect, test } from 'vitest'
 import { languageOf, setLanguage, t } from '../../electron/i18n'
 import en from '../../electron/locales/en'
 import es from '../../electron/locales/es'
+import { sceneAt } from '../../electron/scenes'
+import { bossStateOf } from '../../src/office/office.ts'
+import { limitLine, money, shortTokens } from '../../src/spend.ts'
 
 /** Every key path of a table, with its text. */
 const leaves = (table: object, prefix = ''): Map<string, string> => {
@@ -54,5 +57,25 @@ describe('the texts', () => {
     setLanguage('es')
     expect(t('notify.done', { name: 'Explore' })).toBe('Explore terminó')
     expect(t('setup.sessionsSome', { count: 1 })).toBe('1 sesión en vivo. Mira la esquina de la pantalla.')
+  })
+
+  test("numbers, money and limits are written the language's way", () => {
+    expect(shortTokens(5000, 'es')).toBe('5,0 k')
+    expect(shortTokens(5000, 'en')).toBe('5.0 k')
+    expect(shortTokens(1_234_567, 'es')).toBe('1,2 M')
+    expect(money(2.5, 'es')).toBe('US$ 2,50')
+    expect(money(2.5, 'en')).toBe('US$2.50')
+    expect(limitLine({ kind: 'seven_day', percentUsed: 61.6, resetsAt: '' }, 'es')).toBe('Límite semanal: 62 %')
+    expect(limitLine({ kind: 'seven_day', percentUsed: 61.6, resetsAt: '' }, 'en')).toBe('Weekly limit: 62%')
+  })
+
+  test("the page's words follow the language: the roster's boss, the demo cast", () => {
+    setLanguage('en')
+    expect(bossStateOf('working')).toBe('working')
+    expect(bossStateOf('idle')).toBe('waiting for you')
+    expect((sceneAt('team', 30, 0).agents as { name: string }[]).map(one => one.name)).toContain('Explorer')
+    setLanguage('es')
+    expect(bossStateOf('working')).toBe('trabajando')
+    expect((sceneAt('team', 30, 0).agents as { name: string }[]).map(one => one.name)).toContain('Explorador')
   })
 })

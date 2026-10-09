@@ -91,7 +91,7 @@ test('a second scan reads only what the transcript grew by; a half-written line 
 
 test('worktrees count as their repository, scratch folders by their date', () => {
   assert.equal(projectOf('C:\\code\\tienda\\.claude\\worktrees\\feliz-turing').name, 'tienda')
-  assert.equal(projectOf('C:\\Users\\a\\AppData\\Roaming\\Claude\\scratch-workspaces\\x\\y\\scratch-2026-10-02-830126').name, 'Sin carpeta · 02/10')
+  assert.equal(projectOf('C:\\Users\\ana\\AppData\\Roaming\\Claude\\scratch-workspaces\\x\\y\\scratch-2026-10-02-830126').name, 'Sin carpeta · 02/10')
 })
 
 test('periods: today, a week, everything; projects add their sessions up', () => {

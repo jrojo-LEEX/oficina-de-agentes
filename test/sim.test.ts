@@ -34,7 +34,7 @@ const run = (path: Path, seconds: number, fps = 60, whip = new Whip(HOME.x, HOME
   return { whip, cracks, peakTip, worstStretch }
 }
 
-const isFinite = (whip: Whip) =>
+const isWhole = (whip: Whip) =>
   Array.from(whip.x).every(Number.isFinite) && Array.from(whip.y).every(Number.isFinite)
 
 /** A 120 px circle twice a second (a hand at about 480 px/s), eased in. */
@@ -134,12 +134,12 @@ test('violent input stays finite and recovers its length', () => {
   const whip = new Whip(HOME.x, HOME.y)
   const wild = run(() => ({ x: random() * 3840, y: random() * 2160 }), 5, 60, whip)
 
-  assert.ok(isFinite(whip), 'NaN or Infinity in the chain')
+  assert.ok(isWhole(whip), 'NaN or Infinity in the chain')
   assert.ok(wild.worstStretch < 4, `stretch ${wild.worstStretch} while thrashing`)
 
   const calm = run(() => HOME, 6, 60, whip)
 
-  assert.ok(isFinite(whip))
+  assert.ok(isWhole(whip))
   assert.ok(whip.stretch() < 1.05, `stretch ${whip.stretch()} after settling`)
   assert.ok(whip.isResting(), 'did not settle')
   void calm
@@ -151,7 +151,7 @@ test('a pause or a lost focus is not replayed as one giant step', () => {
   const steps = whip.advance(30)
 
   assert.ok(steps <= 16, `${steps} steps for one frame`)
-  assert.ok(isFinite(whip))
+  assert.ok(isWhole(whip))
   assert.ok(whip.stretch() < 1.05)
 })
 

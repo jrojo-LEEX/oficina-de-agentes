@@ -6,8 +6,10 @@
 import i18next from 'i18next'
 import type { TFunction } from 'i18next'
 
-import en from './locales/en'
-import es from './locales/es'
+// With their extension, so Node's own type stripping (the node:test suites)
+// loads this file as it is; tsc rewrites them to `.js` for Electron.
+import en from './locales/en.ts'
+import es from './locales/es.ts'
 
 export type Language = 'es' | 'en'
 export type LanguageSetting = 'auto' | Language
