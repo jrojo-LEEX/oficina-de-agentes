@@ -1,0 +1,10 @@
+{
+  "name": "oficina",
+  "version": "1.0.0",
+  "description": "Monitor feed for the Oficina de agentes desktop app: writes each Claude Code session's agents to a local folder for the app to draw, with an optional in-terminal office pane (and a whip toy). Alimenta la app de escritorio Oficina de agentes: escribe los agentes de cada sesión de Claude Code en una carpeta local para que la app los dibuje, con un panel de oficina opcional en la terminal (y un látigo de juguete).",
+  "author": { "name": "Oficina de agentes" },
+  "homepage": "https://github.com/jrojo-LEEX/oficina-de-agentes",
+  "repository": "https://github.com/jrojo-LEEX/oficina-de-agentes",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}

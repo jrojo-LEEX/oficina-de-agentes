@@ -1,0 +1,19 @@
+{
+  "name": "oficina-de-agentes",
+  "owner": { "name": "Oficina de agentes", "url": "https://github.com/jrojo-LEEX/oficina-de-agentes" },
+  "metadata": {
+    "description": "Oficina de agentes: a local desktop monitor for your Claude Code agents. Una oficina en vivo de tus agentes de Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "oficina",
+      "source": "./plugin/oficina",
+      "description": "Publishes each session's agents to a local folder for the Oficina de agentes desktop app. Publica los agentes de cada sesión para la app Oficina de agentes.",
+      "version": "1.0.0",
+      "license": "MIT",
+      "homepage": "https://github.com/jrojo-LEEX/oficina-de-agentes",
+      "category": "productivity",
+      "keywords": ["agents", "monitor", "subagents", "windows", "agentes"]
+    }
+  ]
+}
