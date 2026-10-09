@@ -1,0 +1,6 @@
+# One line ending for everyone: LF in the repository and in working copies.
+* text=auto eol=lf
+*.png binary
+*.gif binary
+*.ico binary
+*.wav binary

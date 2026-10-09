@@ -30,7 +30,8 @@ for (const file of files) {
       if (!PLACEHOLDER_USERS.has(match[1].toLowerCase())) found.push(`${file}:${index + 1}: home folder "${match[0]}"`)
     }
 
-    for (const match of line.matchAll(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g)) {
+    // An address ends in a letters-only domain (`pkg@1.2.3` is a package version, not mail).
+    for (const match of line.matchAll(/[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}\b/g)) {
       if (!PLACEHOLDER_MAIL.test(match[0]) && !/^git@github\.com$/.test(match[0])) found.push(`${file}:${index + 1}: e-mail "${match[0]}"`)
     }
   })
