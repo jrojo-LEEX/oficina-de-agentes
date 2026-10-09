@@ -21,7 +21,7 @@ export const USER_DATA_NAME = 'oficina-de-agentes'
 /** Where versions before the rename kept them, read once to carry them over. */
 export const LEGACY_USER_DATA_NAME = 'latigo-overlay'
 
-const given = (value: string | undefined) => (value && value.trim() ? value.trim() : '')
+const given = (value: string | undefined) => value?.trim() ?? ''
 
 /** `~` and `~/x` as the home folder, the rest made absolute. */
 export const expandHome = (value: string, home: string) =>

@@ -30,15 +30,6 @@ const plot = (x, y, color, alpha = 1) => {
   px[at + 3] = Math.round(out * 255)
 }
 
-const disc = (cx, cy, radius, color) => {
-  for (let y = Math.floor(cy - radius - 1); y <= cy + radius + 1; y++) {
-    for (let x = Math.floor(cx - radius - 1); x <= cx + radius + 1; x++) {
-      const cover = Math.max(0, Math.min(1, radius + 0.5 - Math.hypot(x - cx, y - cy)))
-      if (cover > 0) plot(x, y, color, cover)
-    }
-  }
-}
-
 // The tile: dark, rounded.
 for (let y = 0; y < SIZE; y++) {
   for (let x = 0; x < SIZE; x++) {

@@ -61,7 +61,7 @@ const move = (world: World, x: number, y: number) => {
   world.pointer({ type: 'move', x, y, button: 'left' })
 }
 
-const isFinite = (world: World) =>
+const isWhole = (world: World) =>
   Array.from(world.whip.x).every(Number.isFinite) && Array.from(world.whip.y).every(Number.isFinite)
 
 test('agents take desks of their own and keep them', async () => {
@@ -314,11 +314,11 @@ test('violent input stays finite and the whip recovers its length', async () => 
 
   grab(world)
   run(world, 5, () => move(world, Math.floor(random() * 100), Math.floor(random() * 11)))
-  expect(isFinite(world)).toBe(true)
+  expect(isWhole(world)).toBe(true)
 
   world.pointer({ type: 'up', x: 0, y: 0, button: 'left' })
   run(world, 8)
-  expect(isFinite(world)).toBe(true)
+  expect(isWhole(world)).toBe(true)
   expect(world.whip.stretch()).toBeLessThan(1.15)
   expect(world.whip.isResting()).toBe(true)
 })

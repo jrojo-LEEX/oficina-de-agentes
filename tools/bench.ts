@@ -201,11 +201,9 @@ const out = document.getElementById('out')!
 const lines: string[] = []
 const cases = [['pixel', 'party'], ['ilustrado', 'normal'], ['ilustrado', 'night'], ['ilustrado', 'party']] as [Style, Theme][]
 const isLive = new URLSearchParams(location.search).has('vivo')
-{
-  for (const [style, theme] of cases) {
-    lines.push(isLive ? await live(style, theme, 3) : run(style, theme))
-    out.textContent = lines.join('\n')
-  }
+for (const [style, theme] of cases) {
+  lines.push(isLive ? await live(style, theme, 3) : run(style, theme))
+  out.textContent = lines.join('\n')
 }
 
 lines.push(whipRun(0), whipRun(0.8))
