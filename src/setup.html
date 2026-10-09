@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Oficina de agentes</title>
+    <link rel="stylesheet" href="./setup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1 id="title"></h1>
+        <p id="lead"></p>
+        <p id="privacy" class="quiet"></p>
+      </header>
+
+      <section id="claude" class="step" data-state="pending">
+        <h2 id="claude-title"></h2>
+        <p id="claude-text"></p>
+      </section>
+
+      <section id="mod" class="step" data-state="pending">
+        <h2 id="mod-title"></h2>
+        <p id="mod-text"></p>
+        <ol id="mod-commands"></ol>
+        <p id="mod-restart" class="quiet" hidden></p>
+      </section>
+
+      <section id="sessions" class="step" data-state="pending">
+        <h2 id="sessions-title"></h2>
+        <p id="sessions-text"></p>
+        <p>
+          <button id="demo" type="button"></button>
+          <span id="demo-hint" class="quiet"></span>
+        </p>
+      </section>
+
+      <section id="options" class="step">
+        <h2 id="options-title"></h2>
+        <label><input id="opt-login" type="checkbox" /> <span id="opt-login-label"></span></label>
+        <label><input id="opt-updates" type="checkbox" /> <span id="opt-updates-label"></span></label>
+        <label><input id="opt-whip" type="checkbox" /> <span id="opt-whip-label"></span></label>
+        <label class="row">
+          <span id="opt-language-label"></span>
+          <select id="opt-language">
+            <option value="auto"></option>
+            <option value="es">Español</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+      </section>
+
+      <footer>
+        <p id="shortcuts" class="quiet"></p>
+        <p class="quiet"><span id="version"></span> · <a id="repo" href="#">GitHub</a></p>
+        <button id="done" type="button" class="primary"></button>
+      </footer>
+    </main>
+    <script type="module" src="./setup.ts"></script>
+  </body>
+</html>

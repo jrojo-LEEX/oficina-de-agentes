@@ -1,0 +1,177 @@
+:root {
+  color-scheme: dark;
+  --bg: #1f1a17;
+  --panel: #2a2420;
+  --text: #f5f0e6;
+  --quiet: #b9ae9f;
+  --accent: #d97757;
+  --ok: #7cd992;
+  --warn: #f5c542;
+  --bad: #e5484d;
+  font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 24px 32px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  color: var(--accent);
+}
+
+h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+p {
+  margin: 4px 0;
+}
+
+.quiet {
+  color: var(--quiet);
+  font-size: 12.5px;
+}
+
+.step {
+  position: relative;
+  margin: 14px 0;
+  padding: 12px 14px 12px 40px;
+  border-radius: 10px;
+  background: var(--panel);
+  border-left: 4px solid var(--quiet);
+}
+
+.step::before {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  font-weight: 700;
+}
+
+.step[data-state="ok"] {
+  border-left-color: var(--ok);
+}
+
+.step[data-state="ok"]::before {
+  content: "✓";
+  color: var(--ok);
+}
+
+.step[data-state="missing"] {
+  border-left-color: var(--bad);
+}
+
+.step[data-state="missing"]::before {
+  content: "✗";
+  color: var(--bad);
+}
+
+.step[data-state="warn"] {
+  border-left-color: var(--warn);
+}
+
+.step[data-state="warn"]::before {
+  content: "!";
+  color: var(--warn);
+}
+
+.step[data-state="pending"]::before {
+  content: "…";
+  color: var(--quiet);
+}
+
+#options {
+  padding-left: 14px;
+}
+
+ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+code {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #14110f;
+  font: 13px Consolas, "Cascadia Mono", monospace;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 6px 0;
+}
+
+label.row {
+  align-items: center;
+}
+
+button,
+select {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid #4a3f38;
+  background: #3a312b;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1f1a17;
+  font-weight: 600;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+a {
+  color: var(--accent);
+}
+
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+footer p {
+  flex-basis: 100%;
+}

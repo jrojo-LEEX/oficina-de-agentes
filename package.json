@@ -1,0 +1,121 @@
+{
+  "name": "oficina-de-agentes",
+  "productName": "Oficina de agentes",
+  "version": "1.0.0",
+  "description": "A local desktop monitor for your Claude Code agents: a live office, Windows notifications and spending per project. Un monitor local de tus agentes de Claude Code.",
+  "author": "Oficina de agentes contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/jrojo-LEEX/oficina-de-agentes",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jrojo-LEEX/oficina-de-agentes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jrojo-LEEX/oficina-de-agentes/issues"
+  },
+  "private": true,
+  "main": "dist-electron/main.js",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "build": "tsc -p tsconfig.electron.json && vite build",
+    "start": "npm run build && electron .",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.tools.json",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "npm run test:legacy && npm run test:unit",
+    "test:legacy": "node --test \"test/*.test.ts\"",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:plugin": "node scripts/plugin.mjs test",
+    "validate:plugin": "node scripts/plugin.mjs validate",
+    "selftest": "npm run build && electron . --selftest",
+    "icon": "node scripts/make-icon.mjs",
+    "pack": "npm run icon && npm run build && electron-builder --win --dir --publish never",
+    "dist": "npm run icon && npm run build && electron-builder --win --publish never",
+    "release": "npm run icon && npm run build && electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "i18next": "^26.4.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^24.0.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "build": {
+    "appId": "io.github.oficina-de-agentes",
+    "productName": "Oficina de agentes",
+    "copyright": "Copyright © 2026 Oficina de agentes contributors",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json",
+      "!**/*.map"
+    ],
+    "asar": true,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jrojo-LEEX",
+        "repo": "oficina-de-agentes",
+        "releaseType": "release"
+      }
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": true,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": true,
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Oficina de agentes",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Oficina-de-agentes-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Oficina-de-agentes-${version}-portable.${ext}"
+    }
+  }
+}

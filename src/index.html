@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+    <title>Oficina de agentes</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <canvas id="office" hidden></canvas>
+    <canvas id="stage"></canvas>
+    <div id="card" hidden></div>
+    <div id="empty" role="status" hidden></div>
+    <ul id="roster" class="visually-hidden" aria-label="Agentes"></ul>
+    <div id="toast" aria-live="polite"></div>
+    <section id="player" hidden>
+      <canvas id="player-canvas"></canvas>
+      <div id="player-bar">
+        <span id="player-info"></span>
+        <button id="player-slow" type="button">½×</button>
+        <button id="player-normal" type="button">1×</button>
+        <button id="player-fast" type="button">2×</button>
+        <button id="player-close" type="button">Cerrar</button>
+      </div>
+    </section>
+    <section id="spend" hidden>
+      <header>
+        <strong>Gasto</strong>
+        <span id="spend-periods"></span>
+        <span id="spend-views"></span>
+        <button id="spend-close" type="button">Cerrar</button>
+      </header>
+      <p id="spend-limits"></p>
+      <p id="spend-total"></p>
+      <div id="spend-charts">
+        <figure>
+          <figcaption>Últimos 30 días: tiempo activo (barras) y tokens nuevos (línea)</figcaption>
+          <canvas id="spend-daily" width="520" height="110"></canvas>
+        </figure>
+        <figure>
+          <figcaption>Cuándo trabajás (en el período elegido)</figcaption>
+          <canvas id="spend-hours" width="250" height="110"></canvas>
+        </figure>
+      </div>
+      <table>
+        <thead>
+          <tr><th id="spend-name">Proyecto</th><th>Sesiones</th><th>Tiempo activo</th><th>Entrada</th><th>Salida</th><th>Caché leída</th><th>Costo</th></tr>
+        </thead>
+        <tbody id="spend-rows"></tbody>
+      </table>
+      <p id="spend-note">Tiempo activo: el tiempo entre mensajes de cada sesión, sin contar pausas de más de 5 minutos. Entrada: tokens nuevos de entrada, incluidos los que se guardan en caché. Caché leída: el contexto que se vuelve a leer en cada respuesta, mucho más barato. Subagentes incluidos. Costo: el que informó Claude Code, solo de las sesiones que el mod Oficina vio en vivo.</p>
+    </section>
+    <section id="report" hidden>
+      <header>
+        <strong>Parte del día</strong>
+        <span id="report-totals"></span>
+        <button id="report-close" type="button">Cerrar</button>
+      </header>
+      <ol id="report-list"></ol>
+    </section>
+
+    <div id="controls" hidden>
+      <button id="mute" type="button" title="Silenciar" aria-label="Silenciar">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M3 7.5h3l4-3.5v12l-4-3.5H3z" fill="currentColor" />
+          <path class="waves" d="M13 7a4.2 4.2 0 0 1 0 6M15.2 4.8a7.4 7.4 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <path class="slash" d="M13 7.5l5 5M18 7.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+      </button>
+      <input id="volume" type="range" min="0" max="100" step="1" aria-label="Volumen" title="Volumen" />
+      <button id="hide" type="button" title="Ocultar el látigo" aria-label="Ocultar el látigo">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M2.5 10s3-5 7.5-5 7.5 5 7.5 5-3 5-7.5 5-7.5-5-7.5-5z" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <path d="M4 16L16 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+      </button>
+      <button id="done" type="button" title="Volver a trabajar (modo pasivo)" aria-label="Volver a trabajar">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </div>
+
+    <div id="hint" aria-live="polite"></div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

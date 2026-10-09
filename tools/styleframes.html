@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Oficina · style frames</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        background: linear-gradient(135deg, #3d5a80, #98c1d9 55%, #e0fbfc);
+        font: 14px 'Segoe UI', system-ui, sans-serif;
+        color: #1b1b1f;
+      }
+      #frames {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 780px);
+        gap: 20px;
+      }
+      figure {
+        margin: 0;
+      }
+      figcaption {
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="frames"></div>
+    <script type="module" src="./styleframes.ts"></script>
+  </body>
+</html>
