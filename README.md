@@ -41,6 +41,8 @@ Después **abre una sesión nueva** de Claude Code: las que ya estaban abiertas 
 
 **3. Mira la guía.** La primera vez, la app abre la guía *Estado y ayuda*. Revisa la carpeta de Claude Code y el mod, y cada paso se pone en verde cuando está listo; si falta algo, te muestra el comando exacto con un botón *Copiar*. Lanza un agente en Claude Code y aparece en la esquina de la pantalla.
 
+<img src="docs/guide.png" width="420" alt="La guía del primer arranque: Claude Code encontrado, el mod faltante con los dos comandos para copiar y las opciones">
+
 ¿Sin Claude Code a mano? En la guía, *Ver una escena de demo*, o bandeja → *Oficina* → *Escenas de demo*.
 
 ## Qué vas a ver

@@ -100,6 +100,10 @@ const e2e = {
     if (IS_E2E) checkNow(true)
   },
   updateState: () => updateState(),
+  /** Plays a demo scene (for the README's recording). */
+  scene: (kind: SceneKind) => {
+    if (IS_E2E) playScene(kind)
+  },
   installUpdate: () => {
     if (IS_E2E) installNow()
   },

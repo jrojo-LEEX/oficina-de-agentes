@@ -4,7 +4,7 @@
 
 A local, open-source monitor for your Claude Code agents: an office in a corner of your screen where you see what each agent is doing, when it finishes or needs you, and how much each project spends.
 
-![Oficina de agentes: an office in the screen corner with each session's Claude and its subagents working at their desks](docs/demo.gif)
+![Oficina de agentes: an office in the screen corner with each session's Claude and its subagents working at their desks](docs/demo.en.gif)
 
 > [!NOTE]
 > **Privacy.** Everything stays on your PC. The app has no telemetry and sends nothing anywhere: it reads files Claude Code already keeps on your machine. Its only network call is the update check against GitHub Releases, and you can turn it off (tray → *Check for updates automatically*, or in the first-run guide).
@@ -40,6 +40,8 @@ Windows may warn you that the app is not signed: see [The executable is not sign
 Then **open a new Claude Code session**: sessions that were already open do not load the mod.
 
 **3. Check the guide.** On first run the app opens the *Status and help* guide. It checks Claude Code's folder and the mod, and each step turns green when it is ready; if something is missing, it shows the exact command with a *Copy* button. Launch an agent in Claude Code and it shows up in the corner of your screen.
+
+<img src="docs/guide.en.png" width="420" alt="The first-run guide: Claude Code found, the mod missing with the two commands to copy, and the options">
 
 No Claude Code at hand? In the guide, *Watch a demo scene*, or tray → *Office* → *Demo scenes*.
 
