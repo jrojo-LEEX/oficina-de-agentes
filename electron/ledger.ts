@@ -134,7 +134,8 @@ const SESSION_ID = /^[\w.-]{1,100}$/
 /** A model id (`claude-opus-5-5`, `vendor/model:tag`). */
 const MODEL_ID = /^[\w.:@/-]{1,100}$/
 
-export const isSafeKey = (key: string, pattern: RegExp) => pattern.test(key) && !RESERVED.has(key)
+// Nor by a name a plain object already answers to (`toString`, `valueOf`…): `??=` would find it.
+export const isSafeKey = (key: string, pattern: RegExp) => pattern.test(key) && !RESERVED.has(key) && !(key in Object.prototype)
 
 const entryOf = (ledger: Ledger, id: string): SessionEntry => {
   ledger.sessions[id] ??= {
@@ -381,7 +382,7 @@ const dayBucket = z.object({
 const ledgerSchema = z.object({
   version: z.literal(4),
   files: z.record(z.string(), z.object({ offset: count, size: count })),
-  // Keys that could reach Object.prototype make the whole ledger be rebuilt.
+  // A key that is not a plain id makes the whole ledger be rebuilt (Zod itself drops `__proto__`).
   sessions: z.record(
     z.string().refine(key => isSafeKey(key, SESSION_ID)),
     z.object({

@@ -89,6 +89,8 @@ describe('the spending ledger', () => {
         { type: 'assistant', timestamp: at, message: { id: 'x1', usage } },
         { type: 'assistant', sessionId: 'constructor', timestamp: at, message: { id: 'x2', usage } },
         { type: 'assistant', sessionId: SESSION, timestamp: at, message: { id: 'x3', model: '__proto__', usage } },
+        { type: 'assistant', sessionId: 'toString', timestamp: at, message: { id: 'x4', usage } },
+        { type: 'assistant', sessionId: SESSION, timestamp: at, message: { id: 'x5', model: 'toString', usage } },
       ]
         .map(line => JSON.stringify(line))
         .join('\n') + '\n',
@@ -100,7 +102,12 @@ describe('the spending ledger', () => {
     expect(({} as Record<string, unknown>).replies).toBeUndefined()
     expect(Object.keys(ledger.sessions)).toEqual([SESSION])
     // Its good lines still count, the hostile model is just not named.
-    expect(Object.values(ledger.sessions[SESSION]!.days)[0]!.replies).toBe(3)
+    expect(Object.values(ledger.sessions[SESSION]!.days)[0]!.replies).toBe(4)
+    expect(typeof Object.prototype.toString).toBe('function')
+    // Saved and read back, the ledger is whole: nothing odd made it in.
+    const file = path.join(tempDir('app'), 'ledger.json')
+    saveLedger(file, ledger)
+    expect(loadLedger(file)).toEqual(ledger)
     expect(Object.keys(ledger.sessions[SESSION]!.models)).toEqual(['claude-opus-5-5'])
   })
 
