@@ -62,6 +62,8 @@ export type OverlayCommand =
   | { type: 'export-replay' }
   | { type: 'spend' }
   | { type: 'diag' }
+  /** The main process let go of the mouse: the page must not go on believing it holds it. */
+  | { type: 'capture-reset' }
 
 export type SavePatch = Partial<
   Pick<

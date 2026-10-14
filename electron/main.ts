@@ -99,6 +99,14 @@ const e2e = {
   interactive: (isOn: boolean) => {
     if (IS_E2E) setInteractive(isOn)
   },
+  /** Where the cursor is, for the pointer poll: a test can't move the real one. */
+  cursor: null as { x: number; y: number } | null,
+  /** Hide or show, as the shortcut or the tray would. */
+  visible: (isOn: boolean) => {
+    if (IS_E2E) setVisible(isOn, 'e2e')
+  },
+  /** What the main process believes about the mouse. */
+  mouse: () => ({ isVisible, isInteractive, isCapturing }),
   /** Checks for an update now (the test points the updater at a local feed). */
   checkUpdates: () => {
     if (IS_E2E) checkNow(true)
@@ -204,7 +212,7 @@ const pollPointer = () => {
     return
   }
 
-  const point = screen.getCursorScreenPoint()
+  const point = (IS_E2E && e2e.cursor) || screen.getCursorScreenPoint()
   const bounds = win.getBounds()
   const x = point.x - bounds.x
   const y = point.y - bounds.y
@@ -216,11 +224,23 @@ const pollPointer = () => {
   }
 }
 
+/**
+ * Lets go of the mouse, and says so to the page: the capture flag lives on
+ * both sides, and a side that resets it alone leaves the other believing the
+ * opposite (the window swallowing clicks the page thinks it does not hold, or
+ * passing through the handle the page thinks it has). Sent before anything
+ * else, so the page's next look at the pointer starts from the same truth.
+ */
+const resetCapture = () => {
+  isCapturing = false
+  send('command', { type: 'capture-reset' })
+}
+
 /** Sets the click-through up again from scratch: after the tray menu, Windows may have dropped it. */
 const resetMouse = () => {
   if (!win || win.isDestroyed()) return
 
-  isCapturing = false
+  resetCapture()
   win.setIgnoreMouseEvents(false)
   applyMouse()
 }
@@ -248,7 +268,7 @@ const applyMouse = () => {
 
 const setInteractive = (next: boolean) => {
   isInteractive = next
-  isCapturing = false
+  resetCapture()
 
   if (next && !isVisible) {
     setVisible(true, 'interactive mode')
@@ -287,7 +307,7 @@ const setVisible = (next: boolean, why = '') => {
     isInteractive = false
   }
 
-  isCapturing = false
+  resetCapture()
   applyMouse()
   send('state', stateForRenderer())
 
@@ -396,7 +416,7 @@ const createWindow = () => {
   // A renderer that dies or hangs must not leave a window holding the mouse.
   const failSafe = () => {
     isInteractive = false
-    isCapturing = false
+    resetCapture()
     applyMouse()
     refreshTray()
   }

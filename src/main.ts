@@ -1209,9 +1209,8 @@ const start = async () => {
       last = performance.now()
       isDirty = true
       isOfficeDirty = true
-      // The main process starts the window back without holding the mouse:
-      // what this side believes is set again from there.
-      isCapturing = false
+      // The pointer is looked at again from scratch (the main process sent
+      // `capture-reset` ahead of this, so the capture flag already agrees).
       mouse.x = mouse.y = -1
       refreshCapture()
       audio.resume()
@@ -1271,7 +1270,11 @@ const start = async () => {
     }
   })
   overlay.onCommand(command => {
-    if (command.type === 'visible') {
+    if (command.type === 'capture-reset') {
+      // The main process let go of the mouse: so has this side, whatever it believed.
+      isCapturing = false
+      refreshCapture()
+    } else if (command.type === 'visible') {
       setVisible(command.isVisible)
     } else if (command.type === 'clip' || command.type === 'timelapse' || command.type === 'export-replay') {
       void record(command.type)

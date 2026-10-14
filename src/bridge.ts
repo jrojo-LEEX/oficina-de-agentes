@@ -40,6 +40,7 @@ export type OverlayCommand =
   | { type: 'export-replay' }
   | { type: 'spend' }
   | { type: 'diag' }
+  | { type: 'capture-reset' }
 
 export type SelftestReport = Record<string, unknown>
 
