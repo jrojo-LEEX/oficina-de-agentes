@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { EN, ES, langOf, say } from '../hooks/i18n.ts'
+import { stateOf } from '../hooks/scene/world.ts'
 
 const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort()
 
@@ -33,4 +34,16 @@ test('Spanish only when the first value given looks Spanish', async () => {
   expect(langOf(['C.UTF-8'])).toBe('en')
   expect(langOf([])).toBe('en')
   expect(langOf([42, { language: 'es' }])).toBe('en')
+})
+
+test('why an agent failed is said in the pane’s language, not as the engine spelled it', async () => {
+  const failed = (note: string) => ({ status: 'failed', activity: 'working', note }) as never
+
+  expect(stateOf(failed('error'), 'es')).toBe('falló (error)')
+  expect(stateOf(failed('refusal'), 'es')).toBe('falló (rechazado)')
+  expect(stateOf(failed('aborted'), 'en')).toBe('failed (interrupted)')
+  expect(stateOf(failed('killed'), 'en')).toBe('failed (killed)')
+  // A reason the table does not know is shown as it came, never lost.
+  expect(stateOf(failed('mystery'), 'en')).toBe('failed (mystery)')
+  expect(stateOf(failed(''), 'es')).toBe('falló')
 })

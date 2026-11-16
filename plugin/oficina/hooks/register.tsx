@@ -73,6 +73,8 @@ const isSceneEvent = (value: unknown): value is SceneEvent =>
 // What the module keeps between dispatches; a reload starts these over, and
 // everything the pane draws from lives in `$.state` instead.
 let demoTimer: { cancel: () => void } | null = null
+/** The poll that keeps the snapshot alive and the agent list reconciled. */
+let beat: { cancel: () => void } | null = null
 let demoAt = 0
 let lastSoundAt = Number.NEGATIVE_INFINITY
 let isClaiming = false
@@ -109,9 +111,14 @@ const readUsage = async ($: Engine) => {
 }
 
 const setBoss = async ($: Engine, next: Pick<OficinaBoss, 'status' | 'activity' | 'detail'> & Partial<Pick<OficinaBoss, 'files' | 'trail'>>) => {
-  const isNew = next.status !== boss.status
-  boss = { ...boss, ...next, since: isNew || boss.since === 0 ? await $.clock.now() : boss.since }
-  await publish($)
+  // Never lets the office break the session: setBoss runs around the tool's own call.
+  try {
+    const isNew = next.status !== boss.status
+    boss = { ...boss, ...next, since: isNew || boss.since === 0 ? await $.clock.now() : boss.since }
+    await publish($)
+  } catch {
+    // The boss is a view; the work goes on regardless.
+  }
 }
 
 let logPath: string | undefined
@@ -365,29 +372,39 @@ export const register: Register = on => {
     const logName = isLogging && liveDir ? fileNameOf((await quietly(() => $.session.id())) ?? '') : ''
     logPath = liveDir && logName !== '' ? joined(liveDir, `${logName}.log`) : undefined
 
-    const stored = await $.store.get(STORE_KEY)
+    const stored = await quietly(() => $.store.get(STORE_KEY))
 
     if (typeof stored === 'object' && stored !== null) {
       // The demo starts off, whatever last session left; the whip stays where it was left.
-      await update($, settings, () => ({ ...DEFAULTS, ...(stored as Partial<OficinaSettings>), isDemo: false }))
+      await quietly(() => update($, settings, () => ({ ...DEFAULTS, ...(stored as Partial<OficinaSettings>), isDemo: false })))
     }
 
     const lang = await langNow($)
-    await $.command.register({
-      name: 'oficina',
-      description: say(lang, 'commandDescription'),
-      argumentHint: say(lang, 'commandHint'),
-    })
+    // A command that cannot be registered leaves the monitor working; only /oficina is lost.
+    await quietly(() =>
+      $.command.register({
+        name: 'oficina',
+        description: say(lang, 'commandDescription'),
+        argumentHint: say(lang, 'commandHint'),
+      }),
+    )
 
     await change($, withoutDemo, 'session.start')
     await reconcile($)
-    $.clock.every(RECONCILE_MS, () => void reconcile($))
+    // One beat only: a session that restarts in the same process (clear, resume) must not stack another.
+    beat?.cancel()
+    beat = $.clock.every(RECONCILE_MS, () => void reconcile($))
 
     // The pane opens only when asked (/oficina): the desktop app is the main view.
     return next(e)
   })
 
   on('session.end', async ($, e, next) => {
+    // Stop the beat first: a tick after the ended file is written would mark it alive again.
+    beat?.cancel()
+    beat = null
+    demoTimer?.cancel()
+    demoTimer = null
     // Gone at once from the app, not after the beat runs out.
     await publish($, true, e.sessionId)
 

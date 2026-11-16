@@ -61,6 +61,13 @@ const ACTIVITY: Record<OficinaAgent['activity'], StringKey> = {
   waiting: 'waiting',
 }
 
+/** The engine's reasons for a failure, said in the pane's language; anything else as it came. */
+const noteOf = (note: string, lang: Lang) => {
+  const key = ({ error: 'noteError', refusal: 'noteRefusal', aborted: 'noteAborted', killed: 'noteKilled' } as const)[note as 'error']
+
+  return key ? say(lang, key) : note
+}
+
 export const stateOf = (agent: OficinaAgent, lang: Lang = 'en') =>
   agent.status === 'running'
     ? say(lang, ACTIVITY[agent.activity])
@@ -69,7 +76,7 @@ export const stateOf = (agent: OficinaAgent, lang: Lang = 'en') =>
       : agent.status === 'done'
         ? say(lang, 'finished')
         : agent.status === 'failed'
-          ? `${say(lang, 'failedAs')}${agent.note ? ` (${agent.note})` : ''}`
+          ? `${say(lang, 'failedAs')}${agent.note ? ` (${noteOf(agent.note, lang)})` : ''}`
           : say(lang, 'stateUnknown')
 
 export class World {
