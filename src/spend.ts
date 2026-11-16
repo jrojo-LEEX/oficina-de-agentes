@@ -342,14 +342,17 @@ export const decimal = (value: number, digits = 1, language: Language = currentL
 export const money = (usd: number, language: Language = currentLanguage()) => t('spend.money', { lng: language, amount: decimal(usd, 2, language) })
 
 /** 1 234 567 → "1,2 M" ("1.2 M" in English); 8 500 → "8,5 k". */
-export const shortTokens = (tokens: number, language: Language = currentLanguage()) =>
-  tokens >= 1e9
-    ? `${decimal(tokens / 1e9, 1, language)} B`
-    : tokens >= 1e6
-      ? `${decimal(tokens / 1e6, 1, language)} M`
-      : tokens >= 1e3
-        ? `${decimal(tokens / 1e3, 1, language)} k`
-        : String(tokens)
+export const shortTokens = (tokens: number, language: Language = currentLanguage()): string => {
+  // A value that rounds up to the next unit's first step is said in that unit:
+  // 999 999 is "1,0 M", not "1000,0 k".
+  const round = (value: number) => Math.round(value * 10) / 10
+
+  if (tokens >= 1e9 || round(tokens / 1e6) >= 1000) return `${decimal(tokens / 1e9, 1, language)} B`
+  if (tokens >= 1e6 || round(tokens / 1e3) >= 1000) return `${decimal(tokens / 1e6, 1, language)} M`
+  if (tokens >= 1e3) return `${decimal(tokens / 1e3, 1, language)} k`
+
+  return String(tokens)
+}
 
 /** 4 500 000 ms → "1 h 15 min": the same in both languages. */
 export const shortTime = (ms: number) => {

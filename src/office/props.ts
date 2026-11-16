@@ -132,9 +132,12 @@ export class Props {
     if (!prop || prop.state === 'carried' || prop.state === 'held' || speed < 40) return false
 
     const push = Math.min(90, speed * 0.12)
+    // Taken before it flies: a folder bursts only when it still stood on its desk,
+    // not each time it is hit again on the floor or in the air.
+    const wasAtRest = prop.state === 'rest'
     this.launch(prop, dir * push, -Math.min(70, 25 + push * 0.6))
 
-    if (prop.kind === 'folder' && prop.state !== 'down') {
+    if (prop.kind === 'folder' && wasAtRest) {
       // The stack bursts: a few loose sheets go everywhere.
       const desk = { slot: prop.slot, x: prop.homeX, feet: prop.floor, isBoss: false }
 

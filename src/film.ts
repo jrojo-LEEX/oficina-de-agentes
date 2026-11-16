@@ -58,7 +58,9 @@ export class Film {
     if (isClipDue) {
       this.lastClipAt = now
       this.clip.push(frame)
-      this.clip = this.clip.filter(one => now - one.t <= CLIP_SECONDS * 1000)
+      // By the frames' own clock (wall time): `now` is the animation clock, and the two
+      // are not comparable, which once kept every frame of the session.
+      this.clip = this.clip.filter(one => frame.t - one.t <= CLIP_SECONDS * 1000)
     }
 
     if (isLapseDue) {
@@ -113,7 +115,14 @@ export const fromReplay = (data: unknown): { fps: number; frames: FilmFrame[] } 
 
     if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || h < 1 || w * h > 200_000 || typeof raw.px !== 'string') return null
 
-    const px = fromBase64(raw.px)
+    let px: Uint8Array
+
+    try {
+      px = fromBase64(raw.px)
+    } catch {
+      // Not base64 at all: refused like any other bad replay.
+      return null
+    }
 
     if (px.length !== w * h) return null
 

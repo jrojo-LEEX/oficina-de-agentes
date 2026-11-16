@@ -204,6 +204,8 @@ const start = async () => {
 
     rosterList.setAttribute('aria-label', t('office.roster'))
     renderRoster()
+    // The boss's type is worded into the agent when the sessions arrive: said again in the new language.
+    office.setSessions(rosterSessions)
     if (!spendPanel.hidden) renderSpend()
     if (!report.hidden) renderReport()
     cardText = ''
@@ -221,7 +223,7 @@ const start = async () => {
     if (wasWhipOn && !state.isWhipOn) {
       const at = clampToScreen({ x: whip.gripX, y: whip.gripY })
       whip.reset(at.x, at.y)
-      fx.update(10)
+      fx.clear()
     }
 
     if (WHIP_PROFILES[state.whipProfile] && state.whipProfile !== profile) {
@@ -907,7 +909,10 @@ const start = async () => {
       return
     }
 
-    closePlayback()
+    // The old player goes without `panelsChanged`: it would hand interactive mode back
+    // before the new one is up, and the new player would open click-through.
+    if (playback) clearInterval(playback.timer)
+
     playback = { frames: replay.frames, fps: replay.fps, index: 0, speed: 1, timer: 0 }
     player.hidden = false
     setSpeed(1)

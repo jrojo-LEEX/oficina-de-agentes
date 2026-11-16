@@ -429,6 +429,17 @@ export class Office {
   /** Lays the office out in its corner of a screen this size. */
   layout(screenWidth: number, screenHeight: number) {
     this.rowsFit = Math.floor((screenHeight - 2 * MARGIN - 2 * PAD - TITLE_H - FOOTER_H) / (BAND_H * this.scale))
+
+    // A smaller screen or a bigger scale leaves fewer desks: whoever sat past the new
+    // last one would be invisible and still make the office taller than the screen.
+    // They leave their seats and take them again, in the hall if there is no room.
+    for (const [key, actor] of this.actors) {
+      if (this.slotsOf(actor).some(slot => slot >= this.capacity)) {
+        this.actors.delete(key)
+        this.gone.delete(key)
+      }
+    }
+
     let cols = 1
     let rows = 1
 

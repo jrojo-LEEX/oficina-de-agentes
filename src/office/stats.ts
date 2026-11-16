@@ -64,7 +64,7 @@ export class Stats {
     this.roll(now)
     this.data.today += 1
     this.data.criticalsToday += isCritical ? 1 : 0
-    this.data.byName[name] = (this.data.byName[name] ?? 0) + 1
+    this.data.byName[name] = (Object.hasOwn(this.data.byName, name) ? this.data.byName[name]! : 0) + 1
 
     try {
       this.storage?.setItem(KEY, JSON.stringify(this.data))
@@ -73,21 +73,30 @@ export class Stats {
     }
   }
 
+  // The getters roll the day and the month first: an office left open overnight
+  // must not show yesterday's count until the first hit of the new day.
   get today() {
+    this.roll(new Date())
+
     return this.data.today
   }
 
   get criticalsToday() {
+    this.roll(new Date())
+
     return this.data.criticalsToday
   }
 
   /** How many this month the agent called `name` took. */
   monthOf(name: string) {
-    return this.data.byName[name] ?? 0
+    this.roll(new Date())
+
+    return Object.hasOwn(this.data.byName, name) ? this.data.byName[name]! : 0
   }
 
   /** The employee of the month: whoever took the most, or null before the first hit. */
   employeeOfTheMonth(): { name: string; hits: number } | null {
+    this.roll(new Date())
     let best: { name: string; hits: number } | null = null
 
     for (const [name, hits] of Object.entries(this.data.byName)) {

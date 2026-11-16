@@ -163,6 +163,23 @@ test('a folder spills sheets, which the robot bins', () => {
   assert.equal([...props.items.values()].some(prop => prop.kind === 'paper'), false)
 })
 
+test('a folder bursts once: hit again on the floor, it spills nothing more', () => {
+  const props = new Props()
+  props.sync([{ slot: 0, x: 0, feet: 15, isBoss: false }], 120)
+  const folder = props.items.get('0:folder')!
+  const sheets = () => [...props.items.values()].filter(prop => prop.kind === 'paper').length
+
+  props.hit('prop:0:folder', 400, -1)
+  const first = sheets()
+  assert.ok(first > 0)
+
+  for (let frame = 0; frame < 4 * FPS && folder.state !== 'down'; frame++) props.step(1 / FPS)
+  assert.equal(folder.state, 'down')
+  const before = sheets()
+  props.hit('prop:0:folder', 400, 1)
+  assert.equal(sheets(), before)
+})
+
 test('a slow tip hooks a fallen prop; a flick flings it', () => {
   const props = new Props()
   props.sync([{ slot: 0, x: 0, feet: 15, isBoss: false }], 120)

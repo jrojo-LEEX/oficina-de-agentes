@@ -27,6 +27,13 @@ export class Fx {
   private sparks: Spark[] = []
   private trail: TrailPoint[] = []
 
+  /** Forgets the trail and everything on screen: the whip was put away. */
+  clear() {
+    this.trail = []
+    this.flashes = []
+    this.sparks = []
+  }
+
   /** True while anything here still has pixels to draw. */
   get isActive(): boolean {
     return (

@@ -73,11 +73,12 @@ export class DayLog {
         note: agent.note,
       }
 
-      if (!old || old.status !== entry.status || old.endedAt !== entry.endedAt || old.name !== entry.name) {
-        isChanged = true
-      }
+      // Per agent: another agent's change does not refresh this one's `seenAt`.
+      const hasChanged = !old || old.status !== entry.status || old.endedAt !== entry.endedAt || old.name !== entry.name
 
-      this.byKey.set(agent.key, { ...entry, seenAt: isChanged ? entry.seenAt : (old?.seenAt ?? entry.seenAt) })
+      if (hasChanged) isChanged = true
+
+      this.byKey.set(agent.key, { ...entry, seenAt: hasChanged ? entry.seenAt : (old?.seenAt ?? entry.seenAt) })
     }
 
     if (this.byKey.size > MAX) {
