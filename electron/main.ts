@@ -75,6 +75,8 @@ let isCapturing = false
 let isVisible = true
 /** Whether it was interactive when it was hidden: showing it again puts that back. */
 let wasInteractive = false
+/** When the overlay's page was last reloaded after a crash. */
+let reloads: number[] = []
 /** Shortcuts the system refused, usually because another app holds them. */
 let failedShortcuts: string[] = []
 const shots: Record<string, unknown> = {}
@@ -152,9 +154,19 @@ const showNote = (title: string, body: string, onClick?: () => void) => {
   if (!Notification.isSupported()) return
 
   const shown = new Notification({ ...note, silent: true })
-  if (onClick) shown.on('click', onClick)
+  // Held until it is closed or clicked: a notification nobody references can be
+  // collected, and then its click never arrives.
+  liveNotes.add(shown)
+  const release = () => liveNotes.delete(shown)
+  shown.on('close', release)
+  shown.on('click', () => {
+    release()
+    onClick?.()
+  })
   shown.show()
 }
+
+const liveNotes = new Set<Notification>()
 
 // --- Window ---------------------------------------------------------------------
 
@@ -420,8 +432,26 @@ const createWindow = () => {
     applyMouse()
     refreshTray()
   }
-  win.webContents.on('render-process-gone', failSafe)
+  win.webContents.on('render-process-gone', (_event, details) => {
+    failSafe()
+    noteMain(`renderer gone: ${details.reason}`)
+
+    // A page that crashed leaves a blank window until the app restarts: load it again
+    // (`ready` sends it the state and the spending), a few times at most per minute.
+    const now = Date.now()
+    reloads = reloads.filter(at => now - at < 60_000)
+
+    if (details.reason !== 'clean-exit' && reloads.length < 3 && win && !win.isDestroyed()) {
+      reloads.push(now)
+      win.webContents.reload()
+    }
+  })
   win.on('unresponsive', failSafe)
+  // A page that comes back from a hang is handed the mouse rules again.
+  win.on('responsive', () => {
+    resetCapture()
+    applyMouse()
+  })
 
   win.on('closed', () => {
     win = null
@@ -989,12 +1019,14 @@ const scanSpend = async () => {
 
     const isChanged = await scan(ledger, TRANSCRIPTS_DIR)
 
-    if (isChanged) saveLedger(ledgerPath(), ledger)
-
+    // The panel gets the numbers whether or not the file can be written just now
+    // (a rename blocked by an antivirus, a full disk): the next scan saves again.
     if (isChanged || !hasSentSpend) {
       hasSentSpend = true
       sendSpend()
     }
+
+    if (isChanged) saveLedger(ledgerPath(), ledger)
   } catch (error) {
     console.error('Could not read the sessions’ spending:', error)
   } finally {
@@ -1028,6 +1060,7 @@ let diagTimer: ReturnType<typeof setTimeout> | null = null
 
 /** Asks the renderer for its side; if it does not answer (frozen), saves main's alone. */
 const askDiagnostics = () => {
+  if (diagTimer) clearTimeout(diagTimer)
   send('command', { type: 'diag' })
   diagTimer = setTimeout(() => saveDiagnostics({ renderer: 'no answer in 2 seconds' }), 2000)
 }

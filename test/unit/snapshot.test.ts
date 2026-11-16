@@ -101,6 +101,17 @@ describe('reading the live folder', () => {
     expect(fs.readdirSync(dir).sort()).toEqual(['broken.json', 'settings.json'])
   })
 
+  test('a snapshot that does not say when it was written is never swept', () => {
+    const dir = tempDir('live')
+    const { updatedAt: _when, ...undated } = snapshotOf('later-mod')
+    writeJson(path.join(dir, 'later-mod.json'), undated)
+    const old = new Date(NOW - 3 * 24 * 60 * 60 * 1000)
+    fs.utimesSync(path.join(dir, 'later-mod.json'), old, old)
+
+    expect(readLive(dir, NOW)).toEqual([])
+    expect(fs.existsSync(path.join(dir, 'later-mod.json'))).toBe(true)
+  })
+
   test('no folder yet: no sessions, no error', () => {
     expect(readLive(path.join(tempDir(), 'missing'), NOW)).toEqual([])
   })

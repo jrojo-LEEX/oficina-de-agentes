@@ -4,7 +4,10 @@
 
 import type { LiveSession } from './shared'
 
-export type Seen = { status: string; activity: string; name: string; session: string }
+export type Seen = { status: string; activity: string; name: string; session: string; sessionId: string; isRecent: boolean }
+
+/** An end witnessed within this long counts as news; older finished agents are not announced again. */
+const RECENT_END_MS = 60_000
 
 export type ChangeKind = 'waiting' | 'done' | 'failed'
 
@@ -26,11 +29,11 @@ export const changesOf = (before: Map<string, Seen> | null, sessions: LiveSessio
     const boss = session.boss as { status?: string } | undefined
 
     if (boss && typeof boss.status === 'string') {
-      now.set(`${session.id}:boss`, { status: boss.status, activity: boss.status, name: 'Claude', session: label })
+      now.set(`${session.id}:boss`, { status: boss.status, activity: boss.status, name: 'Claude', session: label, sessionId: session.id, isRecent: false })
     }
 
     for (const raw of session.agents) {
-      const agent = raw as { id?: unknown; status?: unknown; activity?: unknown; name?: unknown; type?: unknown; isDemo?: unknown; note?: unknown }
+      const agent = raw as { id?: unknown; status?: unknown; activity?: unknown; name?: unknown; type?: unknown; isDemo?: unknown; note?: unknown; endedAt?: unknown }
 
       if (typeof agent.id !== 'string' || agent.isDemo === true) continue
 
@@ -39,11 +42,16 @@ export const changesOf = (before: Map<string, Seen> | null, sessions: LiveSessio
         activity: String(agent.activity ?? ''),
         name: String(agent.name || agent.type || anAgent),
         session: label,
+        sessionId: session.id,
+        isRecent: typeof agent.endedAt === 'number' && agent.endedAt > 0 && Date.now() - agent.endedAt < RECENT_END_MS,
       })
     }
   }
 
   if (before) {
+    // Sessions already in view at the last look: an agent new in one of them is not the session's first sight.
+    const seenSessions = new Set([...before.values()].map(one => one.sessionId))
+
     for (const [key, agent] of now) {
       const was = before.get(key)
       const isBoss = key.endsWith(':boss')
@@ -56,6 +64,10 @@ export const changesOf = (before: Map<string, Seen> | null, sessions: LiveSessio
         notes.push({ title: say('done', agent.name), body: agent.session })
       } else if (!isBoss && was && agent.status !== was.status && agent.status === 'failed') {
         notes.push({ title: say('failed', agent.name), body: agent.session })
+      } else if (!isBoss && !was && seenSessions.has(agent.sessionId) && (agent.status === 'done' || agent.status === 'failed') && agent.isRecent) {
+        // It started and ended between two looks (or its session went quiet and came back):
+        // said once, as long as its end was witnessed just now, never for old finished ones.
+        notes.push({ title: say(agent.status, agent.name), body: agent.session })
       }
     }
   }

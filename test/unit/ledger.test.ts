@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 
 import { emptyLedger, loadLedger, saveLedger, scan, summaryOf } from '../../electron/ledger'
 import { tempDir } from './helpers'
@@ -116,6 +116,50 @@ describe('the spending ledger', () => {
     fs.writeFileSync(file, '{"version":4,"files":{},"sessions":{"__proto__":{"id":"x"}}}')
 
     expect(loadLedger(file)).toEqual(emptyLedger())
+  })
+
+  test('a line dated far in the future does not swallow the time after it', async () => {
+    const root = tempDir('projects')
+    const dir = path.join(root, 'C--work-clock')
+    fs.mkdirSync(dir, { recursive: true })
+    const start = Date.now() - 20 * 60_000
+    const lines = Array.from({ length: 12 }, (_, i) => ({ type: 'user', sessionId: SESSION, cwd: 'C:/work/clock', timestamp: new Date(start + i * 60_000).toISOString() }))
+    lines.splice(6, 0, { type: 'user', sessionId: SESSION, cwd: 'C:/work/clock', timestamp: '2099-01-01T00:00:00.000Z' })
+    fs.writeFileSync(path.join(dir, `${SESSION}.jsonl`), `${lines.map(line => JSON.stringify(line)).join('\n')}\n`)
+    const ledger = emptyLedger()
+    await scan(ledger, root)
+    const active = Object.values(ledger.sessions[SESSION]!.days).reduce((sum, day) => sum + day.activeMs, 0)
+
+    // Eleven one-minute gaps between the twelve real events.
+    expect(active).toBe(11 * 60_000)
+    expect(ledger.sessions[SESSION]!.lastAt).toBeLessThan(Date.now() + 10 * 60_000)
+  })
+
+  test('a transcript that cannot be opened is skipped, and the others still count', async () => {
+    const root = tempDir('projects')
+    const make = (name: string, session: string) => {
+      const dir = path.join(root, name)
+      fs.mkdirSync(dir, { recursive: true })
+      const at = new Date(Date.now() - 60_000).toISOString()
+      fs.writeFileSync(path.join(dir, `${session}.jsonl`), `${JSON.stringify({ type: 'user', sessionId: session, cwd: `C:/work/${name}`, timestamp: at })}\n`)
+
+      return path.join(dir, `${session}.jsonl`)
+    }
+    const locked = make('a-locked', '11111111-0000-0000-0000-000000000001')
+    make('b-fine', '11111111-0000-0000-0000-000000000002')
+    const open = fs.promises.open.bind(fs.promises)
+    const spy = vi.spyOn(fs.promises, 'open').mockImplementation(((file: unknown, ...rest: unknown[]) =>
+      String(file) === locked ? Promise.reject(Object.assign(new Error('EPERM'), { code: 'EPERM' })) : (open as (...args: unknown[]) => unknown)(file, ...rest)) as never)
+
+    try {
+      const ledger = emptyLedger()
+      await expect(scan(ledger, root)).resolves.toBe(true)
+      expect(Object.keys(ledger.sessions)).toEqual(['11111111-0000-0000-0000-000000000002'])
+      // The locked one is tried again next time, from the start.
+      expect(ledger.files[locked]).toBeUndefined()
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   test('a missing or unreadable ledger starts empty', () => {

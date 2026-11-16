@@ -59,6 +59,8 @@ export type Ledger = { version: 4; files: Record<string, FileState>; sessions: R
 
 /** A gap longer than this between two events is a pause, not work. */
 export const IDLE_GAP_MS = 5 * 60_000
+/** How far past now an event's time may be and still count (clocks differ a little). */
+const FUTURE_SLACK_MS = 5 * 60_000
 const RECENT_IDS = 60
 const CHUNK = 4 * 1024 * 1024
 
@@ -191,7 +193,7 @@ const lineSchema = z.object({
  * is the session's own conversation: only that one counts time, since a
  * subagent works alongside it.
  */
-export const takeLine = (ledger: Ledger, line: string, fileSession: string, isMain: boolean) => {
+export const takeLine = (ledger: Ledger, line: string, fileSession: string, isMain: boolean, now = Date.now()) => {
   let o: z.infer<typeof lineSchema>
 
   try {
@@ -225,7 +227,9 @@ export const takeLine = (ledger: Ledger, line: string, fileSession: string, isMa
 
   const at = typeof o.timestamp === 'string' ? Date.parse(o.timestamp) : NaN
 
-  if (!Number.isFinite(at)) return
+  // A line dated well past now (a clock that jumped, a bad stamp) is not counted:
+  // it would become the session's last event and swallow the time after it.
+  if (!Number.isFinite(at) || at > now + FUTURE_SLACK_MS) return
 
   entry.firstAt = entry.firstAt ? Math.min(entry.firstAt, at) : at
   entry.lastAt = Math.max(entry.lastAt, at)
@@ -325,7 +329,16 @@ export const scan = async (ledger: Ledger, root: string) => {
     if (size < state.offset) state.offset = 0
     if (size === state.offset) continue
 
-    const handle = await fs.promises.open(file, 'r')
+    // A file that cannot be opened now (an antivirus lock, deleted since the stat, an ACL)
+    // is skipped for this scan and tried again on the next: the others still count.
+    let handle: fs.promises.FileHandle
+
+    try {
+      handle = await fs.promises.open(file, 'r')
+    } catch {
+      continue
+    }
+
     let carry = ''
 
     try {
@@ -359,8 +372,10 @@ export const scan = async (ledger: Ledger, root: string) => {
       state.size = size
       ledger.files[file] = state
       isChanged = true
+    } catch {
+      // Unreadable halfway: what was taken stays, the offset does not move, the next scan retries.
     } finally {
-      await handle.close()
+      await handle.close().catch(() => undefined)
     }
 
     await new Promise(resolve => setImmediate(resolve))

@@ -46,8 +46,9 @@ export const readLive = (dir: string, now: number): LiveSession[] => {
 
       const { updatedAt } = snapshot
 
-      // Only a snapshot, by the mod's own file naming, dead for a day is swept.
-      if (now - updatedAt > LIVE_SWEEP_MS && /^[\w.-]+\.json$/.test(name)) {
+      // Only a snapshot that says when it was written (a later mod may name the field
+      // otherwise), by the mod's own file naming, dead for a day is swept.
+      if (updatedAt > 0 && now - updatedAt > LIVE_SWEEP_MS && /^[\w.-]+\.json$/.test(name)) {
         fs.rmSync(file, { force: true })
         continue
       }
