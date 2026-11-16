@@ -1,0 +1,6 @@
+# OSV-Scanner's own config. Every entry says why and until when.
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2027-03-01
+reason = "minimatch (several majors) reached only through electron-builder's build tooling (app-builder-lib, @electron/asar, glob, filelist); none of it ships in the app. No bump changes those majors yet. Reviewed again when this date passes."

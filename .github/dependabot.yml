@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # The types must match the Node that Electron ships and CI runs (24).
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       build-and-test:
         patterns: ['electron*', 'vite', 'vitest', '@playwright/*', '@biomejs/*', 'typescript', '@types/*']
@@ -14,3 +18,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      # init and analyze must always run the same version, or CodeQL refuses to run.
+      codeql:
+        patterns: ['github/codeql-action/*']

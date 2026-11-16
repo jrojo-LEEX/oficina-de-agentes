@@ -13,8 +13,9 @@ const what = process.argv[2]
 
 const run = args => {
   console.log(`> ${claude} ${args.join(' ')}`)
-  // On Windows the npm shim (claude.cmd) needs a shell; then every argument is quoted, paths with spaces included.
-  const isShell = process.platform === 'win32' && !process.env.CLAUDE_BIN
+  // On Windows the npm shim (claude.cmd, or any .cmd/.bat named by CLAUDE_BIN) needs a shell;
+  // then every argument is quoted, paths with spaces included.
+  const isShell = process.platform === 'win32' && (!process.env.CLAUDE_BIN || /\.(cmd|bat)$/i.test(claude))
   const result = isShell
     ? spawnSync([claude, ...args].map(arg => `"${arg}"`).join(' '), { stdio: 'inherit', shell: true })
     : spawnSync(claude, args, { stdio: 'inherit' })

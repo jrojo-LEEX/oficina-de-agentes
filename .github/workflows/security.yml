@@ -17,6 +17,7 @@ permissions:
 jobs:
   secrets:
     name: Betterleaks
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     env:
       BETTERLEAKS_VERSION: 1.9.0
@@ -40,6 +41,7 @@ jobs:
 
   codeql:
     name: CodeQL
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -64,3 +66,4 @@ jobs:
     with:
       scan-args: |-
         --lockfile=package-lock.json
+        --config=osv-scanner.toml
